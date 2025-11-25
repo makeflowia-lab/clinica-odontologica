@@ -1,0 +1,384 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  password         String
+  firstName        String
+  lastName         String
+  role             UserRole
+  phone            String?
+  clinicId         String?
+  isTemporaryAdmin Boolean  @default(false) // Marca si es el admin temporal por defecto
+  recoverySecret   String?  // Palabra secreta hasheada para recuperación de cuenta
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  createdPatients   Patient[]          @relation("CreatedBy")
+  appointments      Appointment[]      @relation("DentistAppointments")
+  treatments        Treatment[]        @relation("DentistTreatments")
+  clinicalRecords   ClinicalRecord[]   @relation("DentistRecords")
+
+  @@map("users")
+}
+
+model Patient {
+  id                 String   @id @default(uuid())
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String
+  dateOfBirth        DateTime
+  gender             Gender
+  address            String?
+  city               String?
+  postalCode         String?
+  emergencyContact   String?
+  emergencyPhone     String?
+  bloodType          String?
+  allergies          String[]
+  medicalConditions  String[]
+  medications        String[]
+  insuranceProvider  String?
+  insuranceNumber    String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdById        String
+
+  // Relations
+  createdBy        User              @relation("CreatedBy", fields: [createdById], references: [id])
+  appointments     Appointment[]
+  treatments       Treatment[]
+  invoices         Invoice[]
+  clinicalRecords  ClinicalRecord[]
+  odontograms      Odontogram[]
+
+  @@index([firstName, lastName])
+  @@index([phone])
+  @@map("patients")
+}
+
+model Appointment {
+  id         String            @id @default(uuid())
+  patientId  String
+  dentistId  String
+  dateTime   DateTime
+  duration   Int               // in minutes
+  status     AppointmentStatus @default(SCHEDULED)
+  type       AppointmentType
+  notes      String?
+  room       String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  // Relations
+  patient    Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dentist    User              @relation("DentistAppointments", fields: [dentistId], references: [id])
+  treatments Treatment[]
+  invoice    Invoice?
+
+  @@index([dateTime])
+  @@index([patientId])
+  @@index([dentistId])
+  @@map("appointments")
+}
+
+model Treatment {
+  id             String          @id @default(uuid())
+  patientId      String
+  dentistId      String
+  appointmentId  String?
+  name           String
+  description    String?
+  tooth          String?         // FDI notation (11-48)
+  status         TreatmentStatus @default(PLANNED)
+  startDate      DateTime
+  endDate        DateTime?
+  cost           Decimal         @db.Decimal(10, 2)
+  paid           Decimal         @default(0) @db.Decimal(10, 2)
+  notes          String?
+  complications  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dentist       User         @relation("DentistTreatments", fields: [dentistId], references: [id])
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  materials     TreatmentMaterial[]
+
+  @@index([patientId])
+  @@index([status])
+  @@map("treatments")
+}
+
+model Material {
+  id              String     @id @default(uuid())
+  name            String
+  category        MaterialCategory
+  brand           String?
+  supplier        String?
+  unitPrice       Decimal    @db.Decimal(10, 2)
+  stockQuantity   Int
+  minStockLevel   Int
+  unit            String     @default("units")
+  expiryDate      DateTime?
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  treatments      TreatmentMaterial[]
+
+  @@index([stockQuantity])
+  @@map("materials")
+}
+
+model TreatmentMaterial {
+  id          String   @id @default(uuid())
+  treatmentId String
+  materialId  String
+  quantity    Int
+  createdAt   DateTime @default(now())
+
+  // Relations
+  treatment Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  material  Material  @relation(fields: [materialId], references: [id])
+
+  @@unique([treatmentId, materialId])
+  @@map("treatment_materials")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  patientId     String
+  appointmentId String?       @unique
+  date          DateTime      @default(now())
+  dueDate       DateTime
+  subtotal      Decimal       @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  paid          Decimal       @default(0) @db.Decimal(10, 2)
+  status        InvoiceStatus @default(PENDING)
+  paymentMethod String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  patient     Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment?   @relation(fields: [appointmentId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+
+  @@index([patientId])
+  @@index([status])
+  @@index([date])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  invoiceId     String
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  reference     String?       // Stripe payment intent ID, check number, etc.
+  status        PaymentStatus @default(PENDING)
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model ClinicalRecord {
+  id            String    @id @default(uuid())
+  patientId     String
+  dentistId     String
+  date          DateTime  @default(now())
+  type          String    @default("consultation") // consultation, treatment, surgery, followup
+  diagnosis     String?
+  treatmentPlan String?
+  notes         String
+  attachments   String[]  // URLs to uploaded files
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  patient   Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dentist   User        @relation("DentistRecords", fields: [dentistId], references: [id])
+  odontogram Odontogram?
+
+  @@index([patientId])
+  @@index([date])
+  @@map("clinical_records")
+}
+
+model Odontogram {
+  id              String   @id @default(uuid())
+  patientId       String
+  clinicalRecordId String? @unique
+  data            Json     // Stored as JSONB for flexible tooth data
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicalRecord ClinicalRecord? @relation(fields: [clinicalRecordId], references: [id])
+
+  @@index([patientId])
+  @@map("odontograms")
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  type        NotificationType
+  recipient   String             // email or phone number
+  subject     String?
+  message     String
+  status      NotificationStatus @default(PENDING)
+  scheduledFor DateTime?
+  sentAt      DateTime?
+  error       String?
+  createdAt   DateTime           @default(now())
+
+  @@index([status])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  DENTIST
+  RECEPTIONIST
+}
+
+enum Gender {
+  M
+  F
+  OTHER
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentType {
+  CONSULTATION
+  CLEANING
+  FILLING
+  ROOT_CANAL
+  EXTRACTION
+  IMPLANT
+  ORTHODONTICS
+  EMERGENCY
+  OTHER
+}
+
+enum TreatmentStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaterialCategory {
+  FILLING
+  CROWN
+  IMPLANT
+  ORTHODONTIC
+  CONSUMABLE
+  EQUIPMENT
+  PROTECTION
+  MEDICATION
+  OTHER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  PAYPAL
+  STRIPE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}

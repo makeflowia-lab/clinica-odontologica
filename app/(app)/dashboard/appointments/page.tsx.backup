@@ -1,0 +1,474 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Calendar, Clock, User, Plus, Phone, CheckCircle, XCircle, AlertCircle, X, Download, Edit2, Loader2, Save } from 'lucide-react';
+import { exportAppointmentsToExcel } from '@/lib/excel-export';
+
+interface Appointment {
+  id: string;
+  dateTime: string;
+  duration: number;
+  status: string;
+  type: string;
+  notes?: string;
+  patient: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email: string;
+  };
+  dentist: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+interface Patient {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface Dentist {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+export default function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [dentists, setDentists] = useState<Dentist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(''); // Empty = show all upcoming
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'SCHEDULED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'>('all');
+  
+  const [formData, setFormData] = useState({
+    patientId: '',
+    dentistId: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '09:00',
+    duration: 60,
+    type: 'CONSULTATION',
+    notes: '',
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [filter]); // Changed from selectedDate to filter
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      // Load upcoming appointments (next 60 days) or filter by selected date if provided
+      let apiUrl = '/api/appointments';
+      if (selectedDate) {
+        apiUrl += `?date=${selectedDate}`;
+      }
+      
+      const aptRes = await fetch(apiUrl, { headers });
+      if (aptRes.ok) {
+        const data = await aptRes.json();
+        setAppointments(data.appointments || []);
+      }
+
+      // Load patients
+      const patRes = await fetch('/api/patients?limit=100', { headers });
+      if (patRes.ok) {
+        const data = await patRes.json();
+        setPatients(data.patients || []);
+      }
+
+      // Load dentists
+      const denRes = await fetch('/api/users/dentists', { headers });
+      if (denRes.ok) {
+        const data = await denRes.json();
+        setDentists(data.dentists || []);
+      }
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAppointment = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const payload = {
+        patientId: formData.patientId,
+        dentistId: formData.dentistId,
+        dateTime: `${formData.date}T${formData.time}:00.000Z`,
+        duration: formData.duration,
+        type: formData.type,
+        notes: formData.notes,
+      };
+
+      let url = '/api/appointments';
+      let method = 'POST';
+
+      if (isEditing && currentAppointmentId) {
+        url = `/api/appointments?id=${currentAppointmentId}`;
+        method = 'PATCH';
+      }
+
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        loadData();
+        setShowModal(false);
+        resetForm();
+        alert(isEditing ? 'Cita actualizada exitosamente' : 'Cita creada exitosamente');
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.error || 'No se pudo guardar la cita'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar la cita');
+    }
+  };
+
+  const handleEditClick = (apt: Appointment) => {
+    setIsEditing(true);
+    setCurrentAppointmentId(apt.id);
+    
+    const dateObj = new Date(apt.dateTime);
+    const dateStr = dateObj.toISOString().split('T')[0];
+    const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+
+    setFormData({
+      patientId: apt.patient.id,
+      dentistId: apt.dentist.id,
+      date: dateStr,
+      time: timeStr,
+      duration: apt.duration,
+      type: apt.type,
+      notes: apt.notes || '',
+    });
+    
+    setShowModal(true);
+  };
+
+  const handleNewClick = () => {
+    setIsEditing(false);
+    setCurrentAppointmentId(null);
+    resetForm();
+    setShowModal(true);
+  };
+
+  const handleCancelAppointment = async (id: string) => {
+    if (!confirm('¿Está seguro de cancelar esta cita?')) return;
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/appointments?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        // Update the local state immediately for visual feedback
+        setAppointments(prev => prev.map(apt => 
+          apt.id === id ? { ...apt, status: 'CANCELLED' } : apt
+        ));
+        
+        // Show success message
+        alert('✅ Cita cancelada exitosamente');
+        
+        // Reload to ensure sync with server
+        await loadData();
+      } else {
+        alert('❌ Error al cancelar la cita');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('❌ Error de conexión al cancelar la cita');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      patientId: '',
+      dentistId: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '09:00',
+      duration: 60,
+      type: 'CONSULTATION',
+      notes: '',
+    });
+  };
+
+  const handleExport = () => {
+    const exportData = appointments.map(a => ({
+      id: a.id,
+      patientName: `${a.patient.firstName} ${a.patient.lastName}`,
+      patientEmail: a.patient.email,
+      patientPhone: a.patient.phone,
+      date: a.dateTime.split('T')[0],
+      time: new Date(a.dateTime).toLocaleTimeString(),
+      duration: a.duration,
+      reason: a.type,
+      status: a.status as any,
+      notes: a.notes
+    }));
+    exportAppointmentsToExcel(exportData);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return 'bg-green-100 text-green-800';
+      case 'SCHEDULED': return 'bg-blue-100 text-blue-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
+      case 'COMPLETED': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return <CheckCircle className="w-4 h-4" />;
+      case 'SCHEDULED': return <Clock className="w-4 h-4" />;
+      case 'CANCELLED': return <XCircle className="w-4 h-4" />;
+      case 'COMPLETED': return <CheckCircle className="w-4 h-4" />;
+      default: return <AlertCircle className="w-4 h-4" />;
+    }
+  };
+
+  const filteredAppointments = appointments.filter(apt => 
+    filter === 'all' || apt.status === filter
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Agenda de Citas</h1>
+          <p className="text-gray-600 mt-1">Gestiona las citas de la clínica</p>
+        </div>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>Exportar Excel</span>
+          </button>
+          <button
+            onClick={handleNewClick}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nueva Cita</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Filtrar por Fecha (opcional)
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                placeholder="Todas las citas próximas"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {selectedDate && (
+                <button
+                  onClick={() => setSelectedDate('')}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Ver Todas
+                </button>
+              )}
+            </div>
+            {!selectedDate && (
+              <p className="text-xs text-gray-500 mt-1">Mostrando todas las citas próximas</p>
+            )}
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Todos</option>
+              <option value="SCHEDULED">Programadas</option>
+              <option value="CONFIRMED">Confirmadas</option>
+              <option value="COMPLETED">Completadas</option>
+              <option value="CANCELLED">Canceladas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Appointments List */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+            <p className="text-gray-500 mt-2">Cargando citas...</p>
+          </div>
+        ) : filteredAppointments.length === 0 ? (
+          <div className="p-12 text-center">
+            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Cita' : 'Nueva Cita'}</h2>
+              <button
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Paciente *</label>
+                <select
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                  disabled={isEditing} // Disable patient change on edit for simplicity
+                >
+                  <option value="">Seleccionar paciente...</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dentista *</label>
+                <select
+                   value={formData.dentistId}
+                   onChange={(e) => setFormData({...formData, dentistId: e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   required
+                >
+                    <option value="">Seleccionar dentista...</option>
+                    {dentists.map(d => (
+                        <option key={d.id} value={d.id}>Dr. {d.firstName} {d.lastName}</option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Hora *</label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({...formData, time: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duración (min) *</label>
+                  <select
+                    value={formData.duration}
+                    onChange={(e) => setFormData({...formData, duration: Number(e.target.value)})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>1 hora</option>
+                    <option value={90}>1.5 horas</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Cita *</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="CONSULTATION">Consulta</option>
+                  <option value="CLEANING">Limpieza</option>
+                  <option value="FILLING">Empaste</option>
+                  <option value="ROOT_CANAL">Endodoncia</option>
+                  <option value="EXTRACTION">Extracción</option>
+                  <option value="IMPLANT">Implante</option>
+                  <option value="ORTHODONTICS">Ortodoncia</option>
+                  <option value="EMERGENCY">Urgencia</option>
+                  <option value="OTHER">Otro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notas</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button
+                  onClick={() => { setShowModal(false); resetForm(); }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveAppointment}
+                  disabled={!formData.patientId || !formData.dentistId}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  <span>{isEditing ? 'Guardar Cambios' : 'Crear Cita'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
