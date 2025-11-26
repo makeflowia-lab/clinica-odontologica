@@ -156,34 +156,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-
-        {/* Admin Temporal Info */}
-        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-xs text-blue-800 font-medium mb-2">
-            🔐 Credenciales del Administrador Temporal
-          </p>
-          <p className="text-xs text-blue-700 mb-2">
-            Las credenciales fueron generadas automáticamente durante la
-            instalación.
-          </p>
-          <p className="text-xs text-blue-700 mb-2">
-            📄 Revisa el archivo{" "}
-            <span className="font-mono bg-blue-100 px-1 rounded">
-              .temp-admin-credentials.txt
-            </span>{" "}
-            en la raíz del proyecto
-          </p>
-          <p className="text-xs text-blue-700 mb-2">
-            O consulta la salida del comando{" "}
-            <span className="font-mono bg-blue-100 px-1 rounded">
-              npx prisma migrate dev
-            </span>
-          </p>
-          <p className="text-xs text-blue-600 mt-2 font-medium">
-            ⚠️ Este administrador será reemplazado por el primer usuario que se
-            registre.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -324,7 +324,7 @@ export default function BillingPage() {
         body: JSON.stringify({
           patientId: formData.patientId,
           date: formData.date,
-          dueDate: formData.dueDate,
+          dueDate: formData.dueDate || formData.date,
           items: formData.items.map((item) => ({
             description: item.description,
             quantity: item.quantity,
@@ -1080,13 +1080,12 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                   </label>
                   <input
                     type="date"
-                    title="Fecha de vencimiento"
+                    title="Fecha de vencimiento (opcional)"
                     value={formData.dueDate}
                     onChange={(e) =>
                       setFormData({ ...formData, dueDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
                   />
                 </div>
               </div>

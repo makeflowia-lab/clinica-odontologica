@@ -33,12 +33,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
 
   useEffect(() => {
-    // Verificar si hay API key guardada
-    const savedApiKey = localStorage.getItem("user_openai_api_key");
-    if (savedApiKey) {
-      setUserApiKey(savedApiKey);
-      setApiKeyConfigured(true);
-    }
+    // Verificar si hay API key guardada en DB
+    const checkApiKey = async () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const response = await fetch(
+            `/api/settings/api-key?userId=${user.id}`
+          );
+          const data = await response.json();
+          if (data.hasKey) {
+            setApiKeyConfigured(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking API key:", error);
+      }
+    };
+    checkApiKey();
   }, []);
 
   useEffect(() => {

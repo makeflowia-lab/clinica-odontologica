@@ -13,6 +13,7 @@ import {
   Camera,
   Eye,
   Trash2,
+  Edit,
 } from "lucide-react";
 
 interface MedicalRecord {
@@ -56,6 +57,7 @@ export default function RecordsPage() {
     treatment: "",
     notes: "",
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
 
@@ -246,36 +248,59 @@ export default function RecordsPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/records", {
-        method: "POST",
+      const url = editingId ? "/api/records" : "/api/records";
+      const method = editingId ? "PATCH" : "POST";
+      const body = editingId ? { ...formData, id: editingId } : formData;
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          patientId: formData.patientId,
-          dentistId: formData.dentistId,
-          date: formData.date,
-          type: formData.type,
-          diagnosis: formData.diagnosis,
-          treatment: formData.treatment,
-          notes: formData.notes,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
         loadRecords();
         setShowNewModal(false);
         resetForm();
-        alert("Historial clínico creado exitosamente");
+        alert(
+          editingId
+            ? "Historial clínico actualizado exitosamente"
+            : "Historial clínico creado exitosamente"
+        );
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Error al crear el historial clínico");
+        alert(
+          errorData.error ||
+            (editingId
+              ? "Error al actualizar el historial clínico"
+              : "Error al crear el historial clínico")
+        );
       }
     } catch (error) {
-      console.error("Error creating record:", error);
-      alert("Error al crear el historial clínico");
+      console.error("Error saving record:", error);
+      alert(
+        editingId
+          ? "Error al actualizar el historial clínico"
+          : "Error al crear el historial clínico"
+      );
     }
+  };
+
+  const handleEditRecord = (record: MedicalRecord) => {
+    setEditingId(record.id);
+    setFormData({
+      patientId: record.patientId,
+      dentistId: "", // API doesn't return dentistId, user will need to reselect
+      date: new Date(record.date).toISOString().split("T")[0],
+      type: record.type,
+      diagnosis: record.diagnosis,
+      treatment: record.treatment,
+      notes: record.notes,
+    });
+    setShowNewModal(true);
   };
 
   const resetForm = () => {
@@ -288,6 +313,7 @@ export default function RecordsPage() {
       treatment: "",
       notes: "",
     });
+    setEditingId(null);
   };
 
   return (
@@ -475,6 +501,13 @@ export default function RecordsPage() {
                         Ver
                       </button>
                       <button
+                        title="Editar registro"
+                        onClick={() => handleEditRecord(record)}
+                        className="text-blue-600 hover:text-blue-900 ml-4"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
                         title="Eliminar registro"
                         onClick={async () => {
                           if (
@@ -634,7 +667,9 @@ export default function RecordsPage() {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Nuevo Historial Clínico
+                {editingId
+                  ? "Editar Historial Clínico"
+                  : "Nuevo Historial Clínico"}
               </h2>
               <button
                 title="Cerrar"
@@ -797,7 +832,7 @@ export default function RecordsPage() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Crear Registro</span>
+                  <span>{editingId ? "Actualizar" : "Crear Registro"}</span>
                 </button>
               </div>
             </div>

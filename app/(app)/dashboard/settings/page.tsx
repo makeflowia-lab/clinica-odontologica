@@ -10,13 +10,41 @@ import {
   Brain,
   Save,
   Check,
+  CreditCard,
 } from "lucide-react";
 import { useSettings } from "@/app/context/SettingsContext";
+
+import { Modal } from "@/app/components/ui/Modal";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const { settings, updateSettings, refreshSettings } = useSettings();
   const [saved, setSaved] = useState(false);
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const response = await fetch(
+            `/api/settings/api-key?userId=${user.id}`
+          );
+          const data = await response.json();
+          if (data.hasKey) {
+            setApiKeySaved(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking API key:", error);
+      }
+    };
+    checkApiKey();
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -35,11 +63,13 @@ export default function SettingsPage() {
         await refreshSettings(); // Refresh context to update sidebar
         setTimeout(() => setSaved(false), 3000);
       } else {
-        alert("Error al guardar la configuración");
+        setErrorMessage("Error al guardar la configuración");
+        setErrorModalOpen(true);
       }
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Error al guardar la configuración");
+      setErrorMessage("Error al guardar la configuración");
+      setErrorModalOpen(true);
     }
   };
 
@@ -73,7 +103,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: "profile", label: "Perfil", icon: User },
     { id: "clinic", label: "Clínica", icon: Building2 },
-    { id: "notifications", label: "Notificaciones", icon: Bell },
+    { id: "billing", label: "Facturación", icon: CreditCard },
     { id: "security", label: "Seguridad", icon: Lock },
     { id: "ai", label: "AI", icon: Brain },
   ];
@@ -322,73 +352,107 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Notifications Tab */}
-            {activeTab === "notifications" && (
+            {/* Billing Customization Tab */}
+            {activeTab === "billing" && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Preferencias de Notificaciones
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Recordatorios de Citas
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Notificaciones 24h antes de cada cita
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        title="Activar recordatorios de citas"
-                        checked={
-                          settings?.notifications?.appointmentReminders || false
-                        }
-                        onChange={(e) =>
-                          updateSettings({
-                            ...settings,
-                            notifications: {
-                              ...settings.notifications,
-                              appointmentReminders: e.target.checked,
-                            },
-                          })
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Configuración de Factura
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    Personaliza los datos adicionales para tus facturas.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      RFC / Tax ID / Otro
                     </label>
+                    <input
+                      type="text"
+                      title="Identificación fiscal"
+                      placeholder="Ej: SIVRHNECOLL2"
+                      value={settings?.billing?.taxId || ""}
+                      onChange={(e) =>
+                        updateSettings({
+                          ...settings,
+                          billing: {
+                            ...settings.billing,
+                            taxId: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Alertas de Pagos
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Notificaciones sobre facturas y pagos recibidos
-                      </p>
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Opciones de Diseño
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Color de la Factura
+                        </label>
+                        <div className="flex items-center space-x-4">
+                          <input
+                            type="color"
+                            title="Color principal de la factura"
+                            value={settings?.invoiceColor || "#2563eb"}
+                            onChange={(e) =>
+                              updateSettings({
+                                ...settings,
+                                invoiceColor: e.target.value,
+                              })
+                            }
+                            className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-500">
+                            Color principal del PDF
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Pie de Página
+                        </label>
+                        <input
+                          type="text"
+                          title="Texto del pie de página"
+                          placeholder="Ej: Gracias por su preferencia..."
+                          value={settings?.invoiceFooter || ""}
+                          onChange={(e) =>
+                            updateSettings({
+                              ...settings,
+                              invoiceFooter: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Términos y Condiciones
+                        </label>
+                        <textarea
+                          title="Términos y condiciones"
+                          rows={3}
+                          placeholder="Ej: Pago a 30 días..."
+                          value={settings?.invoiceTerms || ""}
+                          onChange={(e) =>
+                            updateSettings({
+                              ...settings,
+                              invoiceTerms: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        title="Activar alertas de pagos"
-                        checked={
-                          settings?.notifications?.paymentAlerts || false
-                        }
-                        onChange={(e) =>
-                          updateSettings({
-                            ...settings,
-                            notifications: {
-                              ...settings.notifications,
-                              paymentAlerts: e.target.checked,
-                            },
-                          })
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
                   </div>
                 </div>
               </div>
@@ -487,22 +551,99 @@ export default function SettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       API Key de Google AI
                     </label>
-                    <input
-                      type="password"
-                      title="API Key de Google AI"
-                      placeholder="Ingresa tu API Key de Google AI"
-                      value={settings?.aiApiKey || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          ...settings,
-                          aiApiKey: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
+                    {apiKeySaved ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">
+                            API Key guardada de forma segura
+                          </span>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const user = JSON.parse(
+                                localStorage.getItem("user") || "{}"
+                              );
+                              await fetch("/api/settings/api-key", {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId: user.id }),
+                              });
+                              setApiKeySaved(false);
+                              setTempApiKey("");
+                            } catch (error) {
+                              console.error("Error deleting API key", error);
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                        >
+                          Cambiar API Key
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex space-x-2">
+                          <input
+                            type="password"
+                            title="API Key de Google AI"
+                            placeholder="Pega tu API Key aquí"
+                            value={tempApiKey}
+                            onChange={(e) => setTempApiKey(e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!tempApiKey) {
+                                setErrorMessage(
+                                  "Por favor ingresa una API Key"
+                                );
+                                setErrorModalOpen(true);
+                                return;
+                              }
+
+                              try {
+                                const user = JSON.parse(
+                                  localStorage.getItem("user") || "{}"
+                                );
+                                const response = await fetch(
+                                  "/api/settings/api-key",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      apiKey: tempApiKey,
+                                      userId: user.id,
+                                    }),
+                                  }
+                                );
+
+                                if (response.ok) {
+                                  setApiKeySaved(true);
+                                  setTempApiKey("");
+                                  setSaved(true);
+                                  setTimeout(() => setSaved(false), 3000);
+                                } else {
+                                  throw new Error("Failed to save API key");
+                                }
+                              } catch (error) {
+                                setErrorMessage("Error al guardar la API Key");
+                                setErrorModalOpen(true);
+                              }
+                            }}
+                            disabled={!tempApiKey}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Guardar y Ocultar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
                       Esta clave se utiliza para las funcionalidades de
-                      asistente digital y análisis de odontogramas
+                      asistente digital y análisis de odontogramas.
                     </p>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -600,6 +741,22 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        title="Mensaje del Sistema"
+        footer={
+          <button
+            onClick={() => setErrorModalOpen(false)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Aceptar
+          </button>
+        }
+      >
+        <p>{errorMessage}</p>
+      </Modal>
     </div>
   );
 }

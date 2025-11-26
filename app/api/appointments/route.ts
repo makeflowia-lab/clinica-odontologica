@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
     const dentistId = searchParams.get("dentistId");
     const patientId = searchParams.get("patientId");
     const status = searchParams.get("status");
@@ -43,7 +45,12 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const whereClause: any = {};
 
-    if (date) {
+    if (startDate && endDate) {
+      whereClause.dateTime = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    } else if (date) {
       const startOfDay = new Date(date + "T00:00:00.000Z");
       const endOfDay = new Date(date + "T23:59:59.999Z");
 

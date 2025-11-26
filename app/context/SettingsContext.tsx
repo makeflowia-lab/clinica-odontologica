@@ -36,6 +36,12 @@ interface Settings {
   language: string;
   timezone: string;
   aiApiKey: string;
+  invoiceColor?: string;
+  invoiceFooter?: string;
+  invoiceTerms?: string;
+  billing?: {
+    taxId: string;
+  };
 }
 
 interface SettingsContextType {
@@ -58,6 +64,10 @@ const defaultSettings: Settings = {
   language: "es",
   timezone: "America/Mexico_City",
   aiApiKey: "",
+  invoiceColor: "#2563eb",
+  invoiceFooter: "",
+  invoiceTerms: "",
+  billing: { taxId: "" },
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(

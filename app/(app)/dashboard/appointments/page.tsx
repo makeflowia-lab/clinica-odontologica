@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { exportAppointmentsToExcel } from "@/lib/excel-export";
+import { Modal } from "@/app/components/ui/Modal";
 
 interface Appointment {
   id: string;
@@ -48,12 +49,48 @@ interface Doctor {
 }
 
 const AppointmentsPage = () => {
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "alert" | "confirm";
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "alert",
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setModalState({ isOpen: true, title, message, type: "alert" });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setModalState({ isOpen: true, title, message, type: "confirm", onConfirm });
+  };
+
+  const closeModal = () => {
+    setModalState((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Helper to get local date string in YYYY-MM-DD format
+  const getLocalDateString = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const [filter, setFilter] = useState<
     "all" | "scheduled" | "confirmed" | "cancelled" | "completed"
   >("all");
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -62,7 +99,7 @@ const AppointmentsPage = () => {
     dentistId: "",
     patientEmail: "",
     patientPhone: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDateString(),
     time: "09:00",
     duration: 60,
     reason: "",
@@ -85,7 +122,13 @@ const AppointmentsPage = () => {
       const params = new URLSearchParams();
       // Only add date filter if it's not empty
       if (selectedDate) {
-        params.append("date", selectedDate);
+        // Create date object from selected date string (YYYY-MM-DD) treated as local
+        const [year, month, day] = selectedDate.split("-").map(Number);
+        const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+        params.append("startDate", startOfDay.toISOString());
+        params.append("endDate", endOfDay.toISOString());
       }
       if (filter !== "all") params.append("status", filter.toUpperCase());
       const response = await fetch(`/api/appointments?${params.toString()}`, {
@@ -183,7 +226,7 @@ const AppointmentsPage = () => {
       !formData.patientPhone ||
       !formData.reason
     ) {
-      alert("Por favor complete todos los campos requeridos");
+      showAlert("Error", "Por favor complete todos los campos requeridos");
       return;
     }
     try {
@@ -211,7 +254,7 @@ const AppointmentsPage = () => {
         await loadAppointments();
         setShowNewModal(false);
         resetForm();
-        alert("Cita creada exitosamente");
+        showAlert("Éxito", "Cita creada exitosamente");
       } else {
         const error = await response.json();
 
@@ -232,32 +275,44 @@ const AppointmentsPage = () => {
             })
             .join("\n");
 
-          const userChoice = confirm(
-            `${error.error}\n\n${error.message}\n\n${suggestions}\n\n¿Desea usar uno de estos horarios?`
+          showConfirm(
+            "Conflicto de Horario",
+            `${error.error}\n\n${error.message}\n\nHorarios sugeridos:\n${suggestions}\n\n¿Desea usar uno de estos horarios?`,
+            () => {
+              if (error.suggestedTimes.length > 0) {
+                // Usar el primer horario sugerido
+                const suggestedDateTime = new Date(
+                  error.suggestedTimes[0].dateTime
+                );
+                const suggestedDate = suggestedDateTime
+                  .toISOString()
+                  .split("T")[0];
+                const suggestedTime = suggestedDateTime
+                  .toTimeString()
+                  .slice(0, 5);
+
+                setFormData({
+                  ...formData,
+                  date: suggestedDate,
+                  time: suggestedTime,
+                });
+
+                showAlert(
+                  "Horario Actualizado",
+                  `Horario actualizado a: ${error.suggestedTimes[0].label}`
+                );
+              }
+            }
           );
-
-          if (userChoice && error.suggestedTimes.length > 0) {
-            // Usar el primer horario sugerido
-            const suggestedDateTime = new Date(
-              error.suggestedTimes[0].dateTime
-            );
-            const suggestedDate = suggestedDateTime.toISOString().split("T")[0];
-            const suggestedTime = suggestedDateTime.toTimeString().slice(0, 5);
-
-            setFormData({
-              ...formData,
-              date: suggestedDate,
-              time: suggestedTime,
-            });
-
-            alert(`Horario actualizado a: ${error.suggestedTimes[0].label}`);
-          }
         } else {
-          alert(error.message || error.error || "Error al crear cita");
+          showAlert(
+            "Error",
+            error.message || error.error || "Error al crear cita"
+          );
         }
       }
     } catch {
-      alert("Error al crear cita");
+      showAlert("Error", "Error al crear cita");
     }
   };
 
@@ -323,15 +378,18 @@ const AppointmentsPage = () => {
         await loadAppointments();
       } else {
         const error = await response.json();
-        alert(error.error || "Error al actualizar el estado de la cita");
+        showAlert(
+          "Error",
+          error.error || "Error al actualizar el estado de la cita"
+        );
       }
     } catch {
-      alert("Error al actualizar el estado de la cita");
+      showAlert("Error", "Error al actualizar el estado de la cita");
     }
   };
 
   const handleCancelAppointment = (id: string) => {
-    if (confirm("¿Está seguro de cancelar esta cita?")) {
+    showConfirm("Cancelar Cita", "¿Está seguro de cancelar esta cita?", () => {
       const token = localStorage.getItem("token");
       fetch(`/api/appointments?id=${id}`, {
         method: "PATCH",
@@ -347,9 +405,9 @@ const AppointmentsPage = () => {
           try {
             msg = (await err.json()).error || msg;
           } catch {}
-          alert(msg);
+          showAlert("Error", msg);
         });
-    }
+    });
   };
 
   const resetForm = () => {
@@ -358,7 +416,7 @@ const AppointmentsPage = () => {
       dentistId: "",
       patientEmail: "",
       patientPhone: "",
-      date: new Date().toISOString().split("T")[0],
+      date: getLocalDateString(),
       time: "09:00",
       duration: 60,
       reason: "",
@@ -599,34 +657,37 @@ const AppointmentsPage = () => {
                     </button>
                     <button
                       title="Eliminar cita"
-                      onClick={async () => {
-                        if (
-                          confirm(
-                            "¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer."
-                          )
-                        ) {
-                          try {
-                            const token = localStorage.getItem("token");
-                            const response = await fetch(
-                              `/api/appointments?id=${appointment.id}`,
-                              {
-                                method: "DELETE",
-                                headers: {
-                                  Authorization: `Bearer ${token}`,
-                                },
-                              }
-                            );
+                      onClick={() => {
+                        showConfirm(
+                          "Eliminar Cita",
+                          "¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.",
+                          async () => {
+                            try {
+                              const token = localStorage.getItem("token");
+                              const response = await fetch(
+                                `/api/appointments?id=${appointment.id}`,
+                                {
+                                  method: "DELETE",
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                }
+                              );
 
-                            if (response.ok) {
-                              loadAppointments();
-                            } else {
-                              alert("Error al eliminar la cita");
+                              if (response.ok) {
+                                loadAppointments();
+                              } else {
+                                showAlert("Error", "Error al eliminar la cita");
+                              }
+                            } catch (error) {
+                              console.error(
+                                "Error deleting appointment:",
+                                error
+                              );
+                              showAlert("Error", "Error al eliminar la cita");
                             }
-                          } catch (error) {
-                            console.error("Error deleting appointment:", error);
-                            alert("Error al eliminar la cita");
                           }
-                        }
+                        );
                       }}
                       className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
                     >
@@ -883,8 +944,9 @@ const AppointmentsPage = () => {
                   <input
                     type="text"
                     title="Nombre del paciente"
-                    // ...el campo de paciente ahora es un select
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={editingAppointment?.patientName || ""}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                     required
                   />
                 </div>
@@ -1038,6 +1100,38 @@ const AppointmentsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Render Modal */}
+      <Modal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        footer={
+          <>
+            {modalState.type === "confirm" && (
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (modalState.type === "confirm" && modalState.onConfirm) {
+                  modalState.onConfirm();
+                }
+                closeModal();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Aceptar
+            </button>
+          </>
+        }
+      >
+        <p className="whitespace-pre-line">{modalState.message}</p>
+      </Modal>
     </div>
   );
 };

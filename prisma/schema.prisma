@@ -27,6 +27,8 @@ model User {
   recoverySecret   String?  // Palabra secreta hasheada para recuperación de cuenta
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  openai_api_key_encrypted String?
+  api_key_last_updated     DateTime?
 
   // Relations
   createdPatients   Patient[]          @relation("CreatedBy")
@@ -290,6 +292,16 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+model RateLimit {
+  id        String   @id @default(uuid())
+  identifier String   // IP or User ID
+  endpoint   String   // Endpoint being accessed
+  timestamp  DateTime @default(now())
+
+  @@index([identifier, endpoint, timestamp])
+  @@map("rate_limits")
 }
 
 // ============================================

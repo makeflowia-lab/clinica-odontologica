@@ -190,3 +190,46 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+// PATCH: Update clinical record
+export async function PATCH(request: NextRequest) {
+  try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    verifyToken(token);
+
+    const body = await request.json();
+    const { id, ...data } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Validate partial data if needed, or just update what's provided
+    // For simplicity, we'll update fields that are present
+    const updateData: any = {};
+    if (data.type) updateData.type = data.type;
+    if (data.diagnosis) updateData.diagnosis = data.diagnosis;
+    if (data.treatment) updateData.treatmentPlan = data.treatment;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.date) updateData.date = new Date(data.date);
+    if (data.dentistId) updateData.dentistId = data.dentistId;
+
+    const record = await prisma.clinicalRecord.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ record });
+  } catch (error) {
+    console.error("Update record error:", error);
+    return NextResponse.json(
+      { error: "Error al actualizar historial clínico" },
+      { status: 500 }
+    );
+  }
+}

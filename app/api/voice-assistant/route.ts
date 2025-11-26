@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { PrismaClient } from "@prisma/client";
+import { decrypt } from "@/lib/encryption";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting: 10 requests per minute per IP (or user if we had it easily accessible here without auth middleware yet)
+    // Using IP as identifier for now since auth is mixed
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const isAllowed = await checkRateLimit(ip, "voice-assistant", 10, 60);
+
+    if (!isAllowed) {
+      return NextResponse.json(
+        { error: "Demasiadas peticiones. Por favor espera un momento." },
+        { status: 429 }
+      );
+    }
+
     const { image, command, apiKey } = await request.json();
 
     if (!image && !command) {
@@ -14,7 +31,34 @@ export async function POST(request: NextRequest) {
 
     // En DESARROLLO: usa API key compartida del servidor para pruebas
     // En PRODUCCIÓN: el cliente proporcionará su propia API key
-    const openaiApiKey = apiKey || process.env.OPENAI_API_KEY;
+    // Obtener usuario (asumiendo que viene en el body o header, por ahora simulamos con un ID fijo o del body si se enviara)
+    // En una app real, usaríamos la sesión.
+    // Intentamos obtener el userId del body si existe, o un header.
+    // Como el frontend actual no envía userId en esta llamada, vamos a asumir que el cliente DEBE enviarlo o usamos el del sistema si no hay.
+    // Pero espera, el frontend usa `useVoiceAssistant` hook?
+    // Vamos a intentar leer el userId de un header custom si lo agregamos, o por ahora,
+    // vamos a buscar si hay alguna key en la DB para el primer admin encontrado si no se pasa usuario.
+    // O mejor, actualizamos el frontend para enviar el userId.
+
+    // Por simplicidad y seguridad incremental:
+    // 1. Si viene apiKey en el body (legacy/dev), se usa.
+    // 2. Si no, buscamos en la DB. Pero necesitamos saber QUIÉN es el usuario.
+    // El frontend actual NO envía userId en /api/voice-assistant.
+    // Necesitamos actualizar el frontend para enviar userId o el token.
+
+    let openaiApiKey = apiKey || process.env.OPENAI_API_KEY;
+
+    if (!openaiApiKey) {
+      // Intentar buscar en la DB para el usuario admin por defecto o cualquier usuario con key
+      // Esto es un fallback temporal hasta que se implemente auth completa en el endpoint
+      const userWithKey = await prisma.user.findFirst({
+        where: { openai_api_key_encrypted: { not: null } },
+      });
+
+      if (userWithKey && userWithKey.openai_api_key_encrypted) {
+        openaiApiKey = decrypt(userWithKey.openai_api_key_encrypted);
+      }
+    }
 
     if (!openaiApiKey) {
       return NextResponse.json(

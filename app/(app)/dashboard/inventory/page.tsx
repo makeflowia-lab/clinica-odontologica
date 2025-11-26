@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   TrendingDown,
   Plus,
+  Minus,
   Search,
   Edit,
   Trash2,
@@ -26,6 +27,8 @@ interface InventoryItem {
   lastUpdated?: string;
 }
 
+import { Modal } from "@/app/components/ui/Modal";
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
@@ -33,6 +36,9 @@ export default function InventoryPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [showUsedModal, setShowUsedModal] = useState(false);
+  const [usedItemId, setUsedItemId] = useState<string>("");
+  const [usedQuantity, setUsedQuantity] = useState<number>(0);
   const [formData, setFormData] = useState({
     name: "",
     category: "Protección",
@@ -42,6 +48,35 @@ export default function InventoryPage() {
     price: "" as any,
     supplier: "",
   });
+
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "alert" | "confirm";
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "alert",
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setModalState({ isOpen: true, title, message, type: "alert" });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setModalState({ isOpen: true, title, message, type: "confirm", onConfirm });
+  };
+
+  const closeModal = () => {
+    setModalState((prev) => ({ ...prev, isOpen: false }));
+  };
 
   useEffect(() => {
     loadItems();
@@ -130,11 +165,11 @@ export default function InventoryPage() {
         resetForm();
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Error al crear el producto");
+        showAlert("Error", errorData.error || "Error al crear el producto");
       }
     } catch (error) {
       console.error("Error creating item:", error);
-      alert("Error al crear el producto");
+      showAlert("Error", "Error al crear el producto");
     }
   };
 
@@ -179,7 +214,7 @@ export default function InventoryPage() {
           setEditingItem(null);
           resetForm();
         } else {
-          alert("Error al actualizar el producto");
+          showAlert("Error", "Error al actualizar el producto");
         }
       } catch (error) {
         console.error("Error updating item:", error);
@@ -202,12 +237,43 @@ export default function InventoryPage() {
         if (response.ok) {
           loadItems();
         } else {
-          alert("Error al eliminar el producto");
+          showAlert("Error", "Error al eliminar el producto");
         }
       } catch (error) {
         console.error("Error deleting item:", error);
         alert("Error al eliminar el producto");
       }
+    }
+  };
+
+  const handleDeductStock = async () => {
+    if (!usedItemId || usedQuantity <= 0) {
+      showAlert("Error", "Seleccione un producto y una cantidad válida");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/inventory/used", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ itemId: usedItemId, quantity: usedQuantity }),
+      });
+      if (response.ok) {
+        loadItems();
+        setShowUsedModal(false);
+        setUsedItemId("");
+        setUsedQuantity(0);
+        showAlert("Éxito", "Stock actualizado correctamente");
+      } else {
+        const errorData = await response.json();
+        showAlert("Error", errorData.error || "Error al actualizar el stock");
+      }
+    } catch (error) {
+      console.error("Error deducting stock:", error);
+      showAlert("Error", "Error al actualizar el stock");
     }
   };
 
@@ -253,6 +319,14 @@ export default function InventoryPage() {
           >
             <Plus className="w-4 h-4" />
             <span>Agregar Producto</span>
+          </button>
+          <button
+            title="Ingreso de Inventario Usado"
+            onClick={() => setShowUsedModal(true)}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
+          >
+            <Minus className="w-4 h-4" />
+            <span>Ingreso Usado</span>
           </button>
         </div>
       </div>
@@ -830,6 +904,87 @@ export default function InventoryPage() {
                 >
                   <Edit className="w-4 h-4" />
                   <span>Actualizar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ingreso de Inventario Usado */}
+      {showUsedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Ingreso de Inventario Usado
+              </h2>
+              <button
+                title="Cerrar"
+                onClick={() => {
+                  setShowUsedModal(false);
+                  setUsedItemId("");
+                  setUsedQuantity(0);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Producto *
+                </label>
+                <select
+                  title="Seleccionar producto"
+                  value={usedItemId}
+                  onChange={(e) => setUsedItemId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Seleccione un producto</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} (Stock: {item.quantity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cantidad a deducir *
+                </label>
+                <input
+                  type="number"
+                  title="Cantidad a deducir"
+                  value={usedQuantity}
+                  onChange={(e) => setUsedQuantity(Number(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button
+                  title="Cancelar"
+                  onClick={() => {
+                    setShowUsedModal(false);
+                    setUsedItemId("");
+                    setUsedQuantity(0);
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  title="Deductir"
+                  onClick={handleDeductStock}
+                  disabled={!usedItemId || usedQuantity <= 0}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Minus className="w-4 h-4" />
+                  <span>Deductir</span>
                 </button>
               </div>
             </div>
