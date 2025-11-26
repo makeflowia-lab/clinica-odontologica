@@ -14,7 +14,7 @@ export default function DigitalAssistant() {
     link.href = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
     document.head.appendChild(link);
 
-    // Agregar CSS personalizado para ocultar errores
+    // Agregar CSS personalizado para ocultar errores y controlar visibilidad
     const customStyle = document.createElement("style");
     customStyle.id = "n8n-custom-style";
     customStyle.innerHTML = `
@@ -23,6 +23,16 @@ export default function DigitalAssistant() {
       .n8n-chat-widget [class*="error"],
       .n8n-chat-widget [class*="Error"] {
         display: none !important;
+      }
+      
+      /* Asegurar que el widget solo aparezca en páginas autenticadas */
+      .n8n-chat-widget {
+        display: none !important;
+      }
+      
+      /* Mostrar solo cuando esté dentro del dashboard */
+      body:has([data-dashboard="true"]) .n8n-chat-widget {
+        display: block !important;
       }
     `;
     document.head.appendChild(customStyle);
@@ -54,6 +64,9 @@ export default function DigitalAssistant() {
     `;
     document.body.appendChild(script);
 
+    // Marcar el body como dashboard
+    document.body.setAttribute("data-dashboard", "true");
+
     return () => {
       // Limpieza al desmontar
       const existingLink = document.getElementById("n8n-chat-style");
@@ -63,6 +76,9 @@ export default function DigitalAssistant() {
       if (existingLink) document.head.removeChild(existingLink);
       if (existingScript) document.body.removeChild(existingScript);
       if (existingCustomStyle) document.head.removeChild(existingCustomStyle);
+
+      // Remover el atributo del body
+      document.body.removeAttribute("data-dashboard");
 
       // Intentar limpiar el widget del DOM
       const widgets = document.querySelectorAll(".n8n-chat-widget");
