@@ -16,11 +16,33 @@ const registerSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Log the incoming data for debugging
+    console.log("Registration attempt with data:", {
+      ...body,
+      password: "[REDACTED]",
+      recoverySecret: body.recoverySecret ? "[REDACTED]" : undefined,
+    });
+
     const data = registerSchema.parse(body);
+
+    // Additional validation to ensure no undefined values
+    if (
+      !data.email ||
+      !data.password ||
+      !data.firstName ||
+      !data.lastName ||
+      !data.role
+    ) {
+      return NextResponse.json(
+        { error: "Todos los campos requeridos deben estar completos" },
+        { status: 400 }
+      );
+    }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: data.email.toLowerCase().trim() },
     });
 
     if (existingUser) {
@@ -56,12 +78,12 @@ export async function POST(request: NextRequest) {
       // Crear el nuevo usuario como ADMIN (primer usuario real)
       user = await prisma.user.create({
         data: {
-          email: data.email,
+          email: data.email.toLowerCase().trim(),
           password: hashedPassword,
-          firstName: data.firstName,
-          lastName: data.lastName,
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
           role: "ADMIN", // El primer usuario siempre es ADMIN
-          phone: data.phone,
+          phone: data.phone?.trim() || null,
           isTemporaryAdmin: false,
           recoverySecret: hashedRecoverySecret,
         },
@@ -81,12 +103,12 @@ export async function POST(request: NextRequest) {
       // Crear usuario normal
       user = await prisma.user.create({
         data: {
-          email: data.email,
+          email: data.email.toLowerCase().trim(),
           password: hashedPassword,
-          firstName: data.firstName,
-          lastName: data.lastName,
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
           role: data.role,
-          phone: data.phone,
+          phone: data.phone?.trim() || null,
           isTemporaryAdmin: false,
           recoverySecret: hashedRecoverySecret,
         },
