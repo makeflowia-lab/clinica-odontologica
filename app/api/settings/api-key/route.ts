@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { createAuditLog } from "@/lib/audit-log";
 
 const prisma = new PrismaClient();
 
@@ -41,6 +42,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Audit log
+    await createAuditLog({
+      userId,
+      action: "API_KEY_UPDATED",
+      resource: "api_key",
+      ipAddress: request.headers.get("x-forwarded-for") || undefined,
+      userAgent: request.headers.get("user-agent") || undefined,
+    });
+
     const maskedKey = `sk-...${apiKey.slice(-4)}`;
 
     return NextResponse.json({
@@ -72,6 +82,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (user?.openai_api_key_encrypted) {
+      // Audit log for viewing
+      await createAuditLog({
+        userId,
+        action: "API_KEY_VIEWED",
+        resource: "api_key",
+        ipAddress: request.headers.get("x-forwarded-for") || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+      });
+
       return NextResponse.json({
         hasKey: true,
         maskedKey: "sk-...****",
@@ -104,6 +123,15 @@ export async function DELETE(request: NextRequest) {
         openai_api_key_encrypted: null,
         api_key_last_updated: null,
       },
+    });
+
+    // Audit log
+    await createAuditLog({
+      userId,
+      action: "API_KEY_DELETED",
+      resource: "api_key",
+      ipAddress: request.headers.get("x-forwarded-for") || undefined,
+      userAgent: request.headers.get("user-agent") || undefined,
     });
 
     return NextResponse.json({

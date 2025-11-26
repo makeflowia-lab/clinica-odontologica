@@ -304,6 +304,22 @@ model RateLimit {
   @@map("rate_limits")
 }
 
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String   // User who performed the action
+  action    String   // Action type: API_KEY_CREATED, API_KEY_UPDATED, API_KEY_DELETED, API_KEY_VIEWED
+  resource  String   // Resource affected: api_key
+  ipAddress String?  // IP address of the user
+  userAgent String?  // User agent string
+  metadata  Json?    // Additional metadata
+  timestamp DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
+  @@map("audit_logs")
+}
+
+
 // ============================================
 // ENUMS
 // ============================================
