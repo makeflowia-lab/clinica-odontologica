@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "JWT_SECRET": "aeefe30007024898a9166133f2b4d15b3a315d78c6d765d82ef153977b4007e7",
+    "NEXTAUTH_SECRET": "d6595f41d30ef81136d4d64d9d68253ab23b4ce4979c1449db5956173fa34896",
+    "JWT_EXPIRES_IN": "7d",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_08AcwhFsRMyo@ep-steep-cake-a4ycrppg-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+    "NEXTAUTH_URL": "https://clinica-odontologica-hazel.vercel.app",
+    "NEXT_PUBLIC_APP_URL": "https://clinica-odontologica-hazel.vercel.app"
+  }
+}
