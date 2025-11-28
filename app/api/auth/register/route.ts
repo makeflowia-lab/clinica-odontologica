@@ -172,7 +172,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Error al registrar usuario" },
+      {
+        error: `Error al registrar usuario: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      },
       { status: 500 }
     );
   }
