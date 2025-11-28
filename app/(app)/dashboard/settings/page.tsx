@@ -417,67 +417,48 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre de la Clínica
-                    </label>
-                    <input
-                      type="text"
-                      title="Nombre de la clínica para la factura"
-                      value={settings?.billing?.clinicName || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          ...settings,
-                          billing: {
-                            ...settings.billing,
-                            clinicName: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre de la Clínica
+                      </label>
+                      <input
+                        type="text"
+                        title="Nombre de la clínica para la factura"
+                        value={settings?.billing?.clinicName || ""}
+                        onChange={(e) =>
+                          updateSettings({
+                            ...settings,
+                            billing: {
+                              ...settings.billing,
+                              clinicName: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre del Odontólogo
-                    </label>
-                    <input
-                      type="text"
-                      title="Nombre del odontólogo para la factura"
-                      value={settings?.billing?.dentistName || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          ...settings,
-                          billing: {
-                            ...settings.billing,
-                            dentistName: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Número Telefónico
-                    </label>
-                    <input
-                      type="tel"
-                      title="Teléfono de contacto para la factura"
-                      value={settings?.billing?.phone || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          ...settings,
-                          billing: {
-                            ...settings.billing,
-                            phone: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre del Veterinario
+                      </label>
+                      <input
+                        type="text"
+                        title="Nombre del veterinario para la factura"
+                        value={settings?.billing?.dentistName || ""}
+                        onChange={(e) =>
+                          updateSettings({
+                            ...settings,
+                            billing: {
+                              ...settings.billing,
+                              dentistName: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -494,28 +475,6 @@ export default function SettingsPage() {
                           billing: {
                             ...settings.billing,
                             email: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RFC / Tax ID / Otro
-                    </label>
-                    <input
-                      type="text"
-                      title="Identificación fiscal"
-                      placeholder="Ej: SIVRHNECOLL2"
-                      value={settings?.billing?.taxId || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          ...settings,
-                          billing: {
-                            ...settings.billing,
-                            taxId: e.target.value,
                           },
                         })
                       }

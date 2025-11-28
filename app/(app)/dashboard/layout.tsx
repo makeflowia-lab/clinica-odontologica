@@ -229,8 +229,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <main className="p-4 sm:p-6">{children}</main>
       </div>
 
-      {/* Digital Assistant Chat Widget */}
+      {/* Digital Assistant Chat Widget - Hidden per user request
       <DigitalAssistant />
+      */}
     </div>
   );
 }

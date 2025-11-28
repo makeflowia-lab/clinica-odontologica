@@ -1249,12 +1249,12 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                           type="number"
                           title="Precio unitario"
                           placeholder="Precio"
-                          value={item.price}
+                          value={item.price === 0 ? "" : item.price}
                           onChange={(e) =>
                             handleItemChange(
                               index,
                               "price",
-                              Number(e.target.value)
+                              e.target.value === "" ? 0 : Number(e.target.value)
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
