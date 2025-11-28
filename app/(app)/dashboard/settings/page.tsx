@@ -463,6 +463,27 @@ export default function SettingsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número Telefónico
+                    </label>
+                    <input
+                      type="tel"
+                      title="Teléfono de contacto para la factura"
+                      value={settings?.billing?.phone || ""}
+                      onChange={(e) =>
+                        updateSettings({
+                          ...settings,
+                          billing: {
+                            ...settings.billing,
+                            phone: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Email de Contacto
                     </label>
                     <input
