@@ -502,69 +502,6 @@ export default function SettingsPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
-                  <div className="border-t pt-6 mt-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Opciones de Diseño
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Color de la Factura
-                        </label>
-                        <input
-                          type="color"
-                          title="Color principal de la factura"
-                          value={settings?.invoiceColor || "#2563eb"}
-                          onChange={(e) =>
-                            updateSettings({
-                              ...settings,
-                              invoiceColor: e.target.value,
-                            })
-                          }
-                          className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Pie de Página
-                        </label>
-                        <input
-                          type="text"
-                          title="Texto del pie de página"
-                          placeholder="Ej: Gracias por su preferencia..."
-                          value={settings?.invoiceFooter || ""}
-                          onChange={(e) =>
-                            updateSettings({
-                              ...settings,
-                              invoiceFooter: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Términos y Condiciones
-                        </label>
-                        <textarea
-                          title="Términos y condiciones"
-                          rows={3}
-                          placeholder="Ej: Pago a 30 días..."
-                          value={settings?.invoiceTerms || ""}
-                          onChange={(e) =>
-                            updateSettings({
-                              ...settings,
-                              invoiceTerms: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
