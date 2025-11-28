@@ -97,6 +97,7 @@ export default function NewPatientPage() {
               .filter(Boolean)
           : [],
         notes: formData.notes || "",
+        bloodType: formData.bloodType || "",
       };
 
       const response = await fetch("/api/patients", {

@@ -333,9 +333,7 @@ export default function ImageOdontogram({
                 left: `${pos.x}%`,
                 top: `${pos.y}%`,
                 position: "absolute",
-                transform: "translate(-50%, -50%)", // Center the marker on the coords
-                width: "20px", // Slightly smaller markers
-                height: "20px",
+                transform: "translate(-50%, -50%)",
               }}
               onMouseDown={(e) => handleMouseDown(e, num)}
               onClick={() => handleToothClick(num)}
@@ -343,7 +341,8 @@ export default function ImageOdontogram({
                     flex items-center justify-center rounded-full border shadow-sm transition-colors
                     ${colorClass}
                     ${isHealthy ? "text-gray-600" : "text-white"}
-                    text-[9px] font-bold
+                    text-[6px] md:text-[9px] font-bold
+                    w-3 h-3 md:w-5 md:h-5
                     ${
                       isEditingPositions
                         ? "cursor-move hover:scale-110 z-10"
