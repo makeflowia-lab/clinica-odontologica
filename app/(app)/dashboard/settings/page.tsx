@@ -512,23 +512,18 @@ export default function SettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Color de la Factura
                         </label>
-                        <div className="flex items-center space-x-4">
-                          <input
-                            type="color"
-                            title="Color principal de la factura"
-                            value={settings?.invoiceColor || "#2563eb"}
-                            onChange={(e) =>
-                              updateSettings({
-                                ...settings,
-                                invoiceColor: e.target.value,
-                              })
-                            }
-                            className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                          />
-                          <span className="text-sm text-gray-500">
-                            Color principal del PDF
-                          </span>
-                        </div>
+                        <input
+                          type="color"
+                          title="Color principal de la factura"
+                          value={settings?.invoiceColor || "#2563eb"}
+                          onChange={(e) =>
+                            updateSettings({
+                              ...settings,
+                              invoiceColor: e.target.value,
+                            })
+                          }
+                          className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                        />
                       </div>
 
                       <div>
