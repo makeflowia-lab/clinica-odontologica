@@ -40,7 +40,7 @@ interface Settings {
   invoiceFooter?: string;
   invoiceTerms?: string;
   billing?: {
-    taxId: string;
+    taxId?: string;
     logo?: string;
     clinicName?: string;
     dentistName?: string;
