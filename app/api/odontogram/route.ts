@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
@@ -93,9 +93,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Verify patient belongs to tenant
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, tenantId: user.tenantId },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado" },
+        { status: 404 }
+      );
+    }
+
     // Get the most recent odontogram
     const odontogram = await prisma.odontogram.findFirst({
-      where: { patientId },
+      where: {
+        patientId,
+        tenantId: user.tenantId, // Enforce tenant isolation
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -122,14 +137,14 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = odontogramSchema.parse(body);
 
-    // Check if patient exists
-    const patient = await prisma.patient.findUnique({
-      where: { id: data.patientId },
+    // Check if patient exists and belongs to tenant
+    const patient = await prisma.patient.findFirst({
+      where: { id: data.patientId, tenantId: user.tenantId },
     });
 
     if (!patient) {
@@ -142,6 +157,7 @@ export async function POST(request: NextRequest) {
     // Create new odontogram
     const odontogram = await prisma.odontogram.create({
       data: {
+        tenantId: user.tenantId, // Assign to tenant
         patientId: data.patientId,
         clinicalRecordId: data.clinicalRecordId || null,
         data: data.data,
@@ -175,13 +191,25 @@ export async function PATCH(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Verify odontogram belongs to tenant
+    const existingOdontogram = await prisma.odontogram.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingOdontogram) {
+      return NextResponse.json(
+        { error: "Odontograma no encontrado" },
+        { status: 404 }
+      );
     }
 
     const body = await request.json();

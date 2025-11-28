@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const userAdmin = verifyToken(token);
 
     const body = await request.json();
     const { firstName, lastName, email, phone, role, password } = body;
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
+        tenantId: userAdmin.tenantId, // Assign to tenant
         firstName,
         lastName,
         email,
@@ -74,10 +75,13 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
-    // Return ALL users, not just dentists
+    // Return ALL users for this tenant
     const users = await prisma.user.findMany({
+      where: {
+        tenantId: user.tenantId, // Enforce tenant isolation
+      },
       select: {
         id: true,
         firstName: true,
@@ -128,6 +132,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: "No puedes eliminar tu propio usuario" },
         { status: 400 }
+      );
+    }
+
+    // Verify user belongs to tenant
+    const existingUser = await prisma.user.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
       );
     }
 

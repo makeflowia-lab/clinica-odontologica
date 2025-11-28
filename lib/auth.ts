@@ -1,5 +1,5 @@
 import jwt, { SignOptions } from "jsonwebtoken";
-import bcrypt from "bcrypt";
+import bcryptjs from "bcryptjs"; // Changed from bcrypt to bcryptjs for Vercel compatibility
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "fallback-secret-change-in-production";
@@ -9,6 +9,7 @@ export interface JWTPayload {
   userId: string;
   email: string;
   role: "ADMIN" | "DENTIST" | "RECEPTIONIST";
+  tenantId: string; // Multi-tenancy: ID de la clínica
   clinicId?: string;
 }
 
@@ -27,14 +28,14 @@ export function verifyToken(token: string): JWTPayload {
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcryptjs.hash(password, 10);
 }
 
 export async function comparePassword(
   password: string,
   hash: string
 ): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  return bcryptjs.compare(password, hash);
 }
 
 export function extractTokenFromHeader(authHeader?: string): string | null {

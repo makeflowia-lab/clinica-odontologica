@@ -1,8 +1,7 @@
-
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
-import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db/prisma";
+import { verifyToken, extractTokenFromHeader } from "@/lib/auth";
+import { z } from "zod";
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1),
@@ -16,32 +15,37 @@ const invoiceSchema = z.object({
   dueDate: z.string(),
   items: z.array(invoiceItemSchema).min(1),
   notes: z.string().optional(),
-  status: z.enum(['PENDING', 'PAID', 'CANCELLED', 'OVERDUE']).optional(),
+  status: z.enum(["PENDING", "PAID", "CANCELLED", "OVERDUE"]).optional(),
   paymentMethod: z.string().optional(),
 });
 
 // GET: List invoices
 export async function GET(request: NextRequest) {
   try {
-    const token = extractTokenFromHeader(request.headers.get('authorization') || '');
-    if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    verifyToken(token);
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token)
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status');
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status");
 
-    const whereClause: any = {};
-    
+    const whereClause: any = {
+      tenantId: user.tenantId, // Enforce tenant isolation
+    };
+
     if (search) {
       whereClause.OR = [
-        { invoiceNumber: { contains: search, mode: 'insensitive' } },
-        { patient: { firstName: { contains: search, mode: 'insensitive' } } },
-        { patient: { lastName: { contains: search, mode: 'insensitive' } } },
+        { invoiceNumber: { contains: search, mode: "insensitive" } },
+        { patient: { firstName: { contains: search, mode: "insensitive" } } },
+        { patient: { lastName: { contains: search, mode: "insensitive" } } },
       ];
     }
 
-    if (status && status !== 'all') {
+    if (status && status !== "all") {
       whereClause.status = status;
     }
 
@@ -51,30 +55,47 @@ export async function GET(request: NextRequest) {
         patient: { select: { firstName: true, lastName: true, email: true } },
         items: true,
       },
-      orderBy: { date: 'desc' },
+      orderBy: { date: "desc" },
     });
 
     return NextResponse.json({ invoices });
-
   } catch (error) {
-    console.error('Get invoices error:', error);
-    return NextResponse.json({ error: 'Error al obtener facturas' }, { status: 500 });
+    console.error("Get invoices error:", error);
+    return NextResponse.json(
+      { error: "Error al obtener facturas" },
+      { status: 500 }
+    );
   }
 }
 
 // POST: Create invoice
 export async function POST(request: NextRequest) {
   try {
-    const token = extractTokenFromHeader(request.headers.get('authorization') || '');
-    if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    verifyToken(token);
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token)
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = invoiceSchema.parse(body);
 
+    // Verify patient belongs to tenant
+    const patient = await prisma.patient.findFirst({
+      where: { id: data.patientId, tenantId: user.tenantId },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado" },
+        { status: 404 }
+      );
+    }
+
     // Calculate totals
     let subtotal = 0;
-    const itemsData = data.items.map(item => {
+    const itemsData = data.items.map((item) => {
       const total = item.quantity * item.unitPrice;
       subtotal += total;
       return {
@@ -89,14 +110,19 @@ export async function POST(request: NextRequest) {
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
 
-    // Generate Invoice Number (Simple auto-increment simulation or UUID segment)
+    // Generate Invoice Number (Scoped to Tenant)
     // For better format: INV-YYYY-XXXX
-    const count = await prisma.invoice.count();
+    const count = await prisma.invoice.count({
+      where: { tenantId: user.tenantId },
+    });
     const year = new Date().getFullYear();
-    const invoiceNumber = `INV-${year}-${(count + 1).toString().padStart(4, '0')}`;
+    const invoiceNumber = `INV-${year}-${(count + 1)
+      .toString()
+      .padStart(4, "0")}`;
 
     const invoice = await prisma.invoice.create({
       data: {
+        tenantId: user.tenantId, // Assign to tenant
         invoiceNumber,
         patientId: data.patientId,
         date: new Date(data.date),
@@ -104,7 +130,7 @@ export async function POST(request: NextRequest) {
         subtotal,
         tax,
         total,
-        status: data.status || 'PENDING',
+        status: data.status || "PENDING",
         notes: data.notes,
         paymentMethod: data.paymentMethod,
         items: {
@@ -118,58 +144,96 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ invoice }, { status: 201 });
-
   } catch (error) {
-    console.error('Create invoice error:', error);
-    return NextResponse.json({ error: 'Error al crear factura' }, { status: 500 });
+    console.error("Create invoice error:", error);
+    return NextResponse.json(
+      { error: "Error al crear factura" },
+      { status: 500 }
+    );
   }
 }
 
 // DELETE: Delete invoice
 export async function DELETE(request: NextRequest) {
-    try {
-      const token = extractTokenFromHeader(request.headers.get('authorization') || '');
-      if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-      verifyToken(token);
-  
-      const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-  
-      if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
-  
-      await prisma.invoice.delete({
-        where: { id },
-      });
-  
-      return NextResponse.json({ message: 'Factura eliminada' });
-  
-    } catch (error) {
-      console.error('Delete invoice error:', error);
-      return NextResponse.json({ error: 'Error al eliminar factura' }, { status: 500 });
+  try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token)
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const user = verifyToken(token);
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id)
+      return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+
+    // Verify invoice belongs to tenant
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingInvoice) {
+      return NextResponse.json(
+        { error: "Factura no encontrada" },
+        { status: 404 }
+      );
     }
+
+    await prisma.invoice.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: "Factura eliminada" });
+  } catch (error) {
+    console.error("Delete invoice error:", error);
+    return NextResponse.json(
+      { error: "Error al eliminar factura" },
+      { status: 500 }
+    );
   }
+}
 
 // PATCH: Update invoice (status, notes, etc)
 export async function PATCH(request: NextRequest) {
-    try {
-      const token = extractTokenFromHeader(request.headers.get('authorization') || '');
-      if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-      verifyToken(token);
-  
-      const body = await request.json();
-      const { id, ...updateData } = body;
-  
-      if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
-  
-      const invoice = await prisma.invoice.update({
-        where: { id },
-        data: updateData,
-      });
-  
-      return NextResponse.json({ invoice });
-  
-    } catch (error) {
-      console.error('Update invoice error:', error);
-      return NextResponse.json({ error: 'Error al actualizar factura' }, { status: 500 });
+  try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token)
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const user = verifyToken(token);
+
+    const body = await request.json();
+    const { id, ...updateData } = body;
+
+    if (!id)
+      return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+
+    // Verify invoice belongs to tenant
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingInvoice) {
+      return NextResponse.json(
+        { error: "Factura no encontrada" },
+        { status: 404 }
+      );
     }
+
+    const invoice = await prisma.invoice.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ invoice });
+  } catch (error) {
+    console.error("Update invoice error:", error);
+    return NextResponse.json(
+      { error: "Error al actualizar factura" },
+      { status: 500 }
+    );
   }
+}

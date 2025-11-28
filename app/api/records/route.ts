@@ -22,14 +22,16 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const type = searchParams.get("type");
     const patientId = searchParams.get("patientId");
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      tenantId: user.tenantId, // Enforce tenant isolation
+    };
 
     if (search) {
       whereClause.OR = [
@@ -100,13 +102,26 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = recordSchema.parse(body);
 
+    // Verify patient belongs to tenant
+    const patient = await prisma.patient.findFirst({
+      where: { id: data.patientId, tenantId: user.tenantId },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado" },
+        { status: 404 }
+      );
+    }
+
     const record = await prisma.clinicalRecord.create({
       data: {
+        tenantId: user.tenantId, // Assign to tenant
         patientId: data.patientId,
         dentistId: data.dentistId,
         date: new Date(data.date),
@@ -146,13 +161,25 @@ export async function DELETE(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Verify record belongs to tenant
+    const existingRecord = await prisma.clinicalRecord.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: "Historial no encontrado" },
+        { status: 404 }
+      );
     }
 
     // Use a transaction to ensure data integrity
@@ -200,13 +227,25 @@ export async function PATCH(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Verify record belongs to tenant
+    const existingRecord = await prisma.clinicalRecord.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: "Historial no encontrado" },
+        { status: 404 }
+      );
     }
 
     // Validate partial data if needed, or just update what's provided

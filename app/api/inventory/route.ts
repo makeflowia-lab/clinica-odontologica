@@ -37,14 +37,16 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const lowStock = searchParams.get("lowStock") === "true";
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      tenantId: user.tenantId, // Enforce tenant isolation
+    };
 
     if (search) {
       whereClause.OR = [
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = materialSchema.parse(body);
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
 
     const material = await prisma.material.create({
       data: {
+        tenantId: user.tenantId, // Assign to tenant
         name: data.name,
         category: mappedCategory,
         supplier: data.supplier,
@@ -133,7 +136,7 @@ export async function PATCH(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -142,6 +145,18 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
     const data = materialSchema.partial().parse(body);
+
+    // Verify material belongs to tenant
+    const existingMaterial = await prisma.material.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingMaterial) {
+      return NextResponse.json(
+        { error: "Material no encontrado" },
+        { status: 404 }
+      );
+    }
 
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -184,12 +199,24 @@ export async function DELETE(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id)
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+
+    // Verify material belongs to tenant
+    const existingMaterial = await prisma.material.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingMaterial) {
+      return NextResponse.json(
+        { error: "Material no encontrado" },
+        { status: 404 }
+      );
+    }
 
     await prisma.material.delete({
       where: { id },

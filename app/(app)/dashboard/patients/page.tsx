@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Patient {
   id: string;
@@ -31,6 +32,9 @@ export default function PatientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const patientsPerPage = 10;
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadPatients();
@@ -63,6 +67,36 @@ export default function PatientsPage() {
     }
   };
 
+  const handleDeleteClick = (id: string) => {
+    setPatientToDelete(id);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!patientToDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/patients?id=${patientToDelete}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        loadPatients();
+      } else {
+        console.error("Error al eliminar el paciente");
+      }
+    } catch (error) {
+      console.error("Error deleting patient:", error);
+    } finally {
+      setConfirmOpen(false);
+      setPatientToDelete(null);
+    }
+  };
+
   // Pagination
   const indexOfLastPatient = currentPage * patientsPerPage;
   const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
@@ -85,6 +119,17 @@ export default function PatientsPage() {
 
   return (
     <div>
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Eliminar Paciente"
+        message="¿Estás seguro de que deseas eliminar este paciente? Esta acción no se puede deshacer."
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -237,35 +282,7 @@ export default function PatientsPage() {
                           Editar
                         </Link>
                         <button
-                          onClick={async () => {
-                            if (
-                              confirm(
-                                "¿Estás seguro de que deseas eliminar este paciente? Esta acción no se puede deshacer."
-                              )
-                            ) {
-                              try {
-                                const token = localStorage.getItem("token");
-                                const response = await fetch(
-                                  `/api/patients?id=${patient.id}`,
-                                  {
-                                    method: "DELETE",
-                                    headers: {
-                                      Authorization: `Bearer ${token}`,
-                                    },
-                                  }
-                                );
-
-                                if (response.ok) {
-                                  loadPatients();
-                                } else {
-                                  alert("Error al eliminar el paciente");
-                                }
-                              } catch (error) {
-                                console.error("Error deleting patient:", error);
-                                alert("Error al eliminar el paciente");
-                              }
-                            }
-                          }}
+                          onClick={() => handleDeleteClick(patient.id)}
                           className="text-red-600 hover:text-red-900"
                           title="Eliminar paciente"
                         >

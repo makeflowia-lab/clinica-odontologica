@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Stats {
   todayAppointments: number;
@@ -56,6 +57,34 @@ export default function DashboardPage() {
   const [usedItemId, setUsedItemId] = useState<string>("");
   const [usedQuantity, setUsedQuantity] = useState<number>(1);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -131,7 +160,11 @@ export default function DashboardPage() {
 
   const handleDeductStock = async () => {
     if (!usedItemId || usedQuantity <= 0) {
-      alert("Seleccione un producto y una cantidad válida");
+      showAlert(
+        "Error",
+        "Seleccione un producto y una cantidad válida",
+        "warning"
+      );
       return;
     }
     try {
@@ -149,14 +182,18 @@ export default function DashboardPage() {
         setShowUsedModal(false);
         setUsedItemId("");
         setUsedQuantity(1);
-        alert("Stock actualizado correctamente");
+        showAlert("Éxito", "Stock actualizado correctamente", "info");
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Error al actualizar el stock");
+        showAlert(
+          "Error",
+          errorData.error || "Error al actualizar el stock",
+          "danger"
+        );
       }
     } catch (error) {
       console.error("Error deducting stock:", error);
-      alert("Error al actualizar el stock");
+      showAlert("Error", "Error al actualizar el stock", "danger");
     }
   };
 
@@ -188,6 +225,17 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -203,7 +251,7 @@ export default function DashboardPage() {
           </Link>
           <Link href="/dashboard/patients/new" className="btn-primary">
             <Plus className="w-4 h-4 mr-2 inline" />
-            Nueva Mascota
+            Nuevo Paciente
           </Link>
         </div>
       </div>

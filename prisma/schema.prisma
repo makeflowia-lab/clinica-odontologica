@@ -14,8 +14,35 @@ datasource db {
 // MODELS
 // ============================================
 
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String   // Nombre de la clínica
+  slug      String   @unique // URL amigable: clinica-dental-mx
+  domain    String?  @unique // Dominio personalizado opcional
+  logo      String?
+  settings  Json?    // Configuraciones específicas
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users            User[]
+  patients         Patient[]
+  appointments     Appointment[]
+  treatments       Treatment[]
+  materials        Material[]
+  invoices         Invoice[]
+  clinicalRecords  ClinicalRecord[]
+  odontograms      Odontogram[]
+  notifications    Notification[]
+  settings_table   Setting[]
+
+  @@map("tenants")
+}
+
 model User {
   id               String   @id @default(uuid())
+  tenantId         String   // Multi-tenancy: ID de la clínica
   email            String   @unique
   password         String
   firstName        String
@@ -31,16 +58,19 @@ model User {
   api_key_last_updated     DateTime?
 
   // Relations
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdPatients   Patient[]          @relation("CreatedBy")
   appointments      Appointment[]      @relation("DentistAppointments")
   treatments        Treatment[]        @relation("DentistTreatments")
   clinicalRecords   ClinicalRecord[]   @relation("DentistRecords")
 
+  @@index([tenantId])
   @@map("users")
 }
 
 model Patient {
   id                 String   @id @default(uuid())
+  tenantId           String   // Multi-tenancy: ID de la clínica
   firstName          String
   lastName           String
   email              String?
@@ -64,6 +94,7 @@ model Patient {
   createdById        String
 
   // Relations
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy        User              @relation("CreatedBy", fields: [createdById], references: [id])
   appointments     Appointment[]
   treatments       Treatment[]
@@ -71,6 +102,7 @@ model Patient {
   clinicalRecords  ClinicalRecord[]
   odontograms      Odontogram[]
 
+  @@index([tenantId])
   @@index([firstName, lastName])
   @@index([phone])
   @@map("patients")
@@ -78,6 +110,7 @@ model Patient {
 
 model Appointment {
   id         String            @id @default(uuid())
+  tenantId   String            // Multi-tenancy: ID de la clínica
   patientId  String
   dentistId  String
   dateTime   DateTime
@@ -90,11 +123,13 @@ model Appointment {
   updatedAt  DateTime          @updatedAt
 
   // Relations
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient    Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dentist    User              @relation("DentistAppointments", fields: [dentistId], references: [id])
   treatments Treatment[]
   invoice    Invoice?
 
+  @@index([tenantId])
   @@index([dateTime])
   @@index([patientId])
   @@index([dentistId])
@@ -103,6 +138,7 @@ model Appointment {
 
 model Treatment {
   id             String          @id @default(uuid())
+  tenantId       String          // Multi-tenancy: ID de la clínica
   patientId      String
   dentistId      String
   appointmentId  String?
@@ -120,11 +156,13 @@ model Treatment {
   updatedAt      DateTime        @updatedAt
 
   // Relations
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dentist       User         @relation("DentistTreatments", fields: [dentistId], references: [id])
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
   materials     TreatmentMaterial[]
 
+  @@index([tenantId])
   @@index([patientId])
   @@index([status])
   @@map("treatments")
@@ -132,6 +170,7 @@ model Treatment {
 
 model Material {
   id              String     @id @default(uuid())
+  tenantId        String     // Multi-tenancy: ID de la clínica
   name            String
   category        MaterialCategory
   brand           String?
@@ -146,8 +185,10 @@ model Material {
   updatedAt       DateTime   @updatedAt
 
   // Relations
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   treatments      TreatmentMaterial[]
 
+  @@index([tenantId])
   @@index([stockQuantity])
   @@map("materials")
 }
@@ -169,6 +210,7 @@ model TreatmentMaterial {
 
 model Invoice {
   id            String        @id @default(uuid())
+  tenantId      String        // Multi-tenancy: ID de la clínica
   invoiceNumber String        @unique
   patientId     String
   appointmentId String?       @unique
@@ -185,11 +227,13 @@ model Invoice {
   updatedAt     DateTime      @updatedAt
 
   // Relations
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient     Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   appointment Appointment?   @relation(fields: [appointmentId], references: [id])
   items       InvoiceItem[]
   payments    Payment[]
 
+  @@index([tenantId])
   @@index([patientId])
   @@index([status])
   @@index([date])
@@ -230,6 +274,7 @@ model Payment {
 
 model ClinicalRecord {
   id            String    @id @default(uuid())
+  tenantId      String    // Multi-tenancy: ID de la clínica
   patientId     String
   dentistId     String
   date          DateTime  @default(now())
@@ -242,10 +287,12 @@ model ClinicalRecord {
   updatedAt     DateTime  @updatedAt
 
   // Relations
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient   Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dentist   User        @relation("DentistRecords", fields: [dentistId], references: [id])
   odontogram Odontogram?
 
+  @@index([tenantId])
   @@index([patientId])
   @@index([date])
   @@map("clinical_records")
@@ -253,6 +300,7 @@ model ClinicalRecord {
 
 model Odontogram {
   id              String   @id @default(uuid())
+  tenantId        String   // Multi-tenancy: ID de la clínica
   patientId       String
   clinicalRecordId String? @unique
   data            Json     // Stored as JSONB for flexible tooth data
@@ -260,15 +308,18 @@ model Odontogram {
   updatedAt       DateTime @updatedAt
 
   // Relations
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
   clinicalRecord ClinicalRecord? @relation(fields: [clinicalRecordId], references: [id])
 
+  @@index([tenantId])
   @@index([patientId])
   @@map("odontograms")
 }
 
 model Notification {
   id          String             @id @default(uuid())
+  tenantId    String             // Multi-tenancy: ID de la clínica
   type        NotificationType
   recipient   String             // email or phone number
   subject     String?
@@ -279,6 +330,10 @@ model Notification {
   error       String?
   createdAt   DateTime           @default(now())
 
+  // Relations
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@index([status])
   @@index([scheduledFor])
   @@map("notifications")
@@ -286,11 +341,17 @@ model Notification {
 
 model Setting {
   id        String   @id @default(uuid())
-  key       String   @unique
+  tenantId  String   // Multi-tenancy: ID de la clínica
+  key       String
   value     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key]) // Cada tenant tiene sus propias settings
+  @@index([tenantId])
   @@map("settings")
 }
 

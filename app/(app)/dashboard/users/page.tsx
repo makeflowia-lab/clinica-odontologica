@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, User, Shield, Stethoscope, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface UserType {
   id: string;
@@ -23,6 +24,51 @@ export default function UsersPage() {
     password: "",
     role: "DENTIST" as "ADMIN" | "DENTIST" | "ASSISTANT",
   });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant: "danger",
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
 
   useEffect(() => {
     loadUsers();
@@ -69,17 +115,29 @@ export default function UsersPage() {
           role: "DENTIST",
         });
         loadUsers();
+        showAlert("Éxito", "Usuario creado correctamente", "info");
       } else {
         const error = await response.json();
-        alert(error.error || "Error al crear usuario");
+        showAlert("Error", error.error || "Error al crear usuario", "danger");
       }
     } catch {
-      alert("Error de red");
+      showAlert("Error", "Error de red", "danger");
     }
   };
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
         <button
@@ -142,36 +200,42 @@ export default function UsersPage() {
                     <button
                       title="Eliminar usuario"
                       onClick={async () => {
-                        if (
-                          confirm(
-                            "¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer."
-                          )
-                        ) {
-                          try {
-                            const token = localStorage.getItem("token");
-                            const response = await fetch(
-                              `/api/users/dentists?id=${user.id}`,
-                              {
-                                method: "DELETE",
-                                headers: {
-                                  Authorization: `Bearer ${token}`,
-                                },
-                              }
-                            );
+                        showConfirm(
+                          "Eliminar Usuario",
+                          "¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.",
+                          async () => {
+                            try {
+                              const token = localStorage.getItem("token");
+                              const response = await fetch(
+                                `/api/users/dentists?id=${user.id}`,
+                                {
+                                  method: "DELETE",
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                }
+                              );
 
-                            if (response.ok) {
-                              loadUsers();
-                            } else {
-                              const data = await response.json();
-                              alert(
-                                data.error || "Error al eliminar el usuario"
+                              if (response.ok) {
+                                loadUsers();
+                              } else {
+                                const data = await response.json();
+                                showAlert(
+                                  "Error",
+                                  data.error || "Error al eliminar el usuario",
+                                  "danger"
+                                );
+                              }
+                            } catch (error) {
+                              console.error("Error deleting user:", error);
+                              showAlert(
+                                "Error",
+                                "Error al eliminar el usuario",
+                                "danger"
                               );
                             }
-                          } catch (error) {
-                            console.error("Error deleting user:", error);
-                            alert("Error al eliminar el usuario");
                           }
-                        }
+                        );
                       }}
                       className="text-red-600 hover:text-red-900"
                     >

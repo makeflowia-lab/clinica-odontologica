@@ -42,8 +42,10 @@ export async function GET(request: NextRequest) {
     const patientId = searchParams.get("patientId");
     const status = searchParams.get("status");
 
-    // Build where clause
-    const whereClause: any = {};
+    // Build where clause with tenantId
+    const whereClause: any = {
+      tenantId: user.tenantId, // Enforce tenant isolation
+    };
 
     if (startDate && endDate) {
       whereClause.dateTime = {
@@ -129,14 +131,18 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = appointmentSchema.parse(body);
 
-    // Verify dentist exists
-    const dentist = await prisma.user.findUnique({
-      where: { id: data.dentistId, role: "DENTIST" },
+    // Verify dentist exists and belongs to tenant
+    const dentist = await prisma.user.findFirst({
+      where: {
+        id: data.dentistId,
+        role: "DENTIST",
+        tenantId: user.tenantId,
+      },
     });
 
     if (!dentist) {
@@ -146,9 +152,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify patient exists
-    const patient = await prisma.patient.findUnique({
-      where: { id: data.patientId },
+    // Verify patient exists and belongs to tenant
+    const patient = await prisma.patient.findFirst({
+      where: {
+        id: data.patientId,
+        tenantId: user.tenantId,
+      },
     });
 
     if (!patient) {
@@ -158,7 +167,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for conflicts
+    // Check for conflicts within tenant
     const appointmentStart = new Date(data.dateTime);
     const appointmentEnd = new Date(
       appointmentStart.getTime() + data.duration * 60000
@@ -166,6 +175,7 @@ export async function POST(request: NextRequest) {
 
     const conflicts = await prisma.appointment.findMany({
       where: {
+        tenantId: user.tenantId, // Enforce tenant isolation
         dentistId: data.dentistId,
         status: { not: "CANCELLED" },
         dateTime: {
@@ -271,6 +281,7 @@ export async function POST(request: NextRequest) {
     const appointment = await prisma.appointment.create({
       data: {
         ...data,
+        tenantId: user.tenantId, // Assign to tenant
         dateTime: new Date(data.dateTime),
         status: "SCHEDULED",
       },
@@ -320,7 +331,7 @@ export async function PATCH(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -334,6 +345,18 @@ export async function PATCH(request: NextRequest) {
 
     // If updating time/dentist, we should check for conflicts again, but for simplicity in this MVP we'll skip strict conflict check on update
     // or we could implement a simplified check.
+
+    // Verify appointment belongs to tenant
+    const existingAppointment = await prisma.appointment.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingAppointment) {
+      return NextResponse.json(
+        { error: "Cita no encontrada" },
+        { status: 404 }
+      );
+    }
 
     const appointment = await prisma.appointment.update({
       where: { id },
@@ -390,13 +413,25 @@ export async function DELETE(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Verify appointment belongs to tenant before deleting
+    const existingAppointment = await prisma.appointment.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingAppointment) {
+      return NextResponse.json(
+        { error: "Cita no encontrada" },
+        { status: 404 }
+      );
     }
 
     await prisma.appointment.delete({

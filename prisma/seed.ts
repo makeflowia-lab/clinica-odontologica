@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcryptjs from "bcryptjs"; // Changed from bcrypt to bcryptjs
 import crypto from "crypto";
 
 const prisma = new PrismaClient();
@@ -47,24 +47,42 @@ function generateRecoverySecret(): string {
 }
 
 async function main() {
-  console.log("🌱 Iniciando configuración de la base de datos...\n");
+  console.log(
+    "🌱 Iniciando configuración de la base de datos con Multi-Tenancy...\n"
+  );
 
-  // Verificar si ya existe algún usuario
-  const userCount = await prisma.user.count();
+  // Verificar si ya existe algún tenant
+  const tenantCount = await prisma.tenant.count();
 
-  if (userCount === 0) {
+  if (tenantCount === 0) {
     console.log(
-      "📝 No hay usuarios. Generando administrador temporal con credenciales únicas...\n"
+      "📝 No hay tenants. Creando tenant y administrador inicial...\n"
     );
 
-    // Generar credenciales únicas
+    // 1. Crear el primer tenant
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: "Clínica Dental Principal",
+        slug: "clinica-principal",
+        isActive: true,
+        settings: {
+          timezone: "America/Mexico_City",
+          currency: "MXN",
+        },
+      },
+    });
+
+    console.log("✅ Tenant creado:", tenant.name);
+
+    // 2. Generar credenciales únicas para el admin
     const tempAdminEmail = generateUniqueEmail();
     const tempAdminPassword = generateSecurePassword(16);
     const tempRecoverySecret = generateRecoverySecret();
 
-    const hashedPassword = await bcrypt.hash(tempAdminPassword, 10);
-    const hashedRecoverySecret = await bcrypt.hash(tempRecoverySecret, 10);
+    const hashedPassword = await bcryptjs.hash(tempAdminPassword, 10);
+    const hashedRecoverySecret = await bcryptjs.hash(tempRecoverySecret, 10);
 
+    // 3. Crear administrador para ese tenant
     const tempAdmin = await prisma.user.create({
       data: {
         email: tempAdminEmail,
@@ -72,6 +90,7 @@ async function main() {
         firstName: "Administrador",
         lastName: "Temporal",
         role: "ADMIN",
+        tenantId: tenant.id, // Asignar al tenant
         isTemporaryAdmin: true,
         recoverySecret: hashedRecoverySecret,
       },
@@ -117,6 +136,7 @@ async function main() {
 CREDENCIALES DEL ADMINISTRADOR TEMPORAL
 ========================================
 Generadas el: ${new Date().toLocaleString()}
+Tenant: ${tenant.name} (${tenant.slug})
 
 Email:     ${tempAdminEmail}
 Contraseña: ${tempAdminPassword}
@@ -135,7 +155,7 @@ Palabra Secreta: ${tempRecoverySecret}
     );
     console.log("   (Este archivo se puede borrar después de usarlas)\n");
   } else {
-    console.log(`ℹ️  Ya existen ${userCount} usuario(s) en la base de datos.`);
+    console.log(`ℹ️  Ya existen ${tenantCount} tenant(s) en la base de datos.`);
 
     // Verificar si existe un admin temporal
     const tempAdmin = await prisma.user.findFirst({

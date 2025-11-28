@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { comparePassword, generateToken } from '@/lib/auth';
-import prisma from '@/lib/db/prisma';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { comparePassword, generateToken } from "@/lib/auth";
+import prisma from "@/lib/db/prisma";
+import { z } from "zod";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Credenciales inválidas' },
+        { error: "Credenciales inválidas" },
         { status: 401 }
       );
     }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Credenciales inválidas' },
+        { error: "Credenciales inválidas" },
         { status: 401 }
       );
     }
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email,
       role: user.role,
+      tenantId: user.tenantId, // Multi-tenancy
       clinicId: user.clinicId || undefined,
     });
 
@@ -47,23 +48,25 @@ export async function POST(request: NextRequest) {
     const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
-      message: 'Inicio de sesión exitoso',
+      message: "Inicio de sesión exitoso",
       token,
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        tenantId: user.tenantId,
+      },
     });
-
   } catch (error) {
-    console.error('Login error:', error);
-    
+    console.error("Login error:", error);
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Datos inválidos', details: error.errors },
+        { error: "Datos inválidos", details: error.errors },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Error al iniciar sesión' },
+      { error: "Error al iniciar sesión" },
       { status: 500 }
     );
   }

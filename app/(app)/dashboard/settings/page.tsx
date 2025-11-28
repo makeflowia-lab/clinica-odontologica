@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/app/context/SettingsContext";
 
-import { Modal } from "@/app/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -22,8 +22,33 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [apiKeySaved, setApiKeySaved] = useState(false);
   const [tempApiKey, setTempApiKey] = useState("");
-  const [errorModalOpen, setErrorModalOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
 
   useEffect(() => {
     const checkApiKey = async () => {
@@ -63,32 +88,38 @@ export default function SettingsPage() {
         await refreshSettings(); // Refresh context to update sidebar
         setTimeout(() => setSaved(false), 3000);
       } else {
-        setErrorMessage("Error al guardar la configuración");
-        setErrorModalOpen(true);
+        showAlert("Error", "Error al guardar la configuración", "danger");
       }
     } catch (error) {
       console.error("Error saving settings:", error);
-      setErrorMessage("Error al guardar la configuración");
-      setErrorModalOpen(true);
+      showAlert("Error", "Error al guardar la configuración", "danger");
     }
   };
 
   const handlePasswordChange = () => {
     if (!settings.security.currentPassword || !settings.security.newPassword) {
-      alert("Por favor complete todos los campos de contraseña");
+      showAlert(
+        "Error",
+        "Por favor complete todos los campos de contraseña",
+        "warning"
+      );
       return;
     }
     if (settings.security.newPassword !== settings.security.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+      showAlert("Error", "Las contraseñas no coinciden", "warning");
       return;
     }
     if (settings.security.newPassword.length < 8) {
-      alert("La contraseña debe tener al menos 8 caracteres");
+      showAlert(
+        "Error",
+        "La contraseña debe tener al menos 8 caracteres",
+        "warning"
+      );
       return;
     }
 
     // En producción, aquí se haría la validación con el backend
-    alert("Contraseña actualizada exitosamente");
+    showAlert("Éxito", "Contraseña actualizada exitosamente", "info");
     updateSettings({
       ...settings,
       security: {
@@ -595,10 +626,11 @@ export default function SettingsPage() {
                           <button
                             onClick={async () => {
                               if (!tempApiKey) {
-                                setErrorMessage(
-                                  "Por favor ingresa una API Key"
+                                showAlert(
+                                  "Error",
+                                  "Por favor ingresa una API Key",
+                                  "warning"
                                 );
-                                setErrorModalOpen(true);
                                 return;
                               }
 
@@ -629,8 +661,11 @@ export default function SettingsPage() {
                                   throw new Error("Failed to save API key");
                                 }
                               } catch (error) {
-                                setErrorMessage("Error al guardar la API Key");
-                                setErrorModalOpen(true);
+                                showAlert(
+                                  "Error",
+                                  "Error al guardar la API Key",
+                                  "danger"
+                                );
                               }
                             }}
                             disabled={!tempApiKey}
@@ -742,21 +777,17 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Modal
-        isOpen={errorModalOpen}
-        onClose={() => setErrorModalOpen(false)}
-        title="Mensaje del Sistema"
-        footer={
-          <button
-            onClick={() => setErrorModalOpen(false)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Aceptar
-          </button>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
         }
-      >
-        <p>{errorMessage}</p>
-      </Modal>
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
     </div>
   );
 }

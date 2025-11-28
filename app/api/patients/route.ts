@@ -35,15 +35,18 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     // If ID is provided, return single patient
     if (id) {
-      const patient = await prisma.patient.findUnique({
-        where: { id },
+      const patient = await prisma.patient.findFirst({
+        where: {
+          id,
+          tenantId: user.tenantId, // Enforce tenant isolation
+        },
         include: {
           appointments: {
             orderBy: { dateTime: "desc" },
@@ -68,16 +71,18 @@ export async function GET(request: NextRequest) {
     const skip = parseInt(searchParams.get("skip") || "0");
 
     // Build where clause for search
-    const whereClause = search
-      ? {
-          OR: [
-            { firstName: { contains: search, mode: "insensitive" as const } },
-            { lastName: { contains: search, mode: "insensitive" as const } },
-            { phone: { contains: search } },
-            { email: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
+    const whereClause: any = {
+      tenantId: user.tenantId, // Enforce tenant isolation
+    };
+
+    if (search) {
+      whereClause.OR = [
+        { firstName: { contains: search, mode: "insensitive" as const } },
+        { lastName: { contains: search, mode: "insensitive" as const } },
+        { phone: { contains: search } },
+        { email: { contains: search, mode: "insensitive" as const } },
+      ];
+    }
 
     // Get patients with pagination
     const [patients, total] = await Promise.all([
@@ -145,6 +150,7 @@ export async function POST(request: NextRequest) {
     const patient = await prisma.patient.create({
       data: {
         ...data,
+        tenantId: user.tenantId, // Assign to tenant
         email: data.email || null,
         dateOfBirth: new Date(data.dateOfBirth),
         allergies: data.allergies || [],
@@ -187,7 +193,7 @@ export async function PUT(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -198,6 +204,18 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const data = patientSchema.partial().parse(body);
+
+    // Verify patient belongs to tenant
+    const existingPatient = await prisma.patient.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingPatient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado" },
+        { status: 404 }
+      );
+    }
 
     const patient = await prisma.patient.update({
       where: { id },
@@ -246,6 +264,18 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    // Verify patient belongs to tenant
+    const existingPatient = await prisma.patient.findFirst({
+      where: { id, tenantId: user.tenantId },
+    });
+
+    if (!existingPatient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado" },
+        { status: 404 }
+      );
     }
 
     await prisma.patient.delete({

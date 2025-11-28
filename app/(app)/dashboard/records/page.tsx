@@ -15,6 +15,7 @@ import {
   Trash2,
   Edit,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface MedicalRecord {
   id: string;
@@ -60,6 +61,51 @@ export default function RecordsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant: "danger",
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
 
   useEffect(() => {
     const loadPatients = async () => {
@@ -242,7 +288,11 @@ export default function RecordsPage() {
       !formData.diagnosis ||
       !formData.treatment
     ) {
-      alert("Por favor complete todos los campos requeridos");
+      showAlert(
+        "Error",
+        "Por favor complete todos los campos requeridos",
+        "warning"
+      );
       return;
     }
 
@@ -265,26 +315,32 @@ export default function RecordsPage() {
         loadRecords();
         setShowNewModal(false);
         resetForm();
-        alert(
+        showAlert(
+          "Éxito",
           editingId
             ? "Historial clínico actualizado exitosamente"
-            : "Historial clínico creado exitosamente"
+            : "Historial clínico creado exitosamente",
+          "info"
         );
       } else {
         const errorData = await response.json();
-        alert(
+        showAlert(
+          "Error",
           errorData.error ||
             (editingId
               ? "Error al actualizar el historial clínico"
-              : "Error al crear el historial clínico")
+              : "Error al crear el historial clínico"),
+          "danger"
         );
       }
     } catch (error) {
       console.error("Error saving record:", error);
-      alert(
+      showAlert(
+        "Error",
         editingId
           ? "Error al actualizar el historial clínico"
-          : "Error al crear el historial clínico"
+          : "Error al crear el historial clínico",
+        "danger"
       );
     }
   };
@@ -318,6 +374,17 @@ export default function RecordsPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -510,37 +577,43 @@ export default function RecordsPage() {
                       <button
                         title="Eliminar registro"
                         onClick={async () => {
-                          if (
-                            confirm(
-                              "¿Estás seguro de que deseas eliminar este historial clínico? Esta acción no se puede deshacer."
-                            )
-                          ) {
-                            try {
-                              const token = localStorage.getItem("token");
-                              const response = await fetch(
-                                `/api/records?id=${record.id}`,
-                                {
-                                  method: "DELETE",
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                }
-                              );
+                          showConfirm(
+                            "Eliminar Historial Clínico",
+                            "¿Estás seguro de que deseas eliminar este historial clínico? Esta acción no se puede deshacer.",
+                            async () => {
+                              try {
+                                const token = localStorage.getItem("token");
+                                const response = await fetch(
+                                  `/api/records?id=${record.id}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      Authorization: `Bearer ${token}`,
+                                    },
+                                  }
+                                );
 
-                              if (response.ok) {
-                                loadRecords();
-                              } else {
-                                const data = await response.json();
-                                alert(
-                                  data.error ||
-                                    "Error al eliminar el historial clínico"
+                                if (response.ok) {
+                                  loadRecords();
+                                } else {
+                                  const data = await response.json();
+                                  showAlert(
+                                    "Error",
+                                    data.error ||
+                                      "Error al eliminar el historial clínico",
+                                    "danger"
+                                  );
+                                }
+                              } catch (error) {
+                                console.error("Error deleting record:", error);
+                                showAlert(
+                                  "Error",
+                                  "Error al eliminar el historial clínico",
+                                  "danger"
                                 );
                               }
-                            } catch (error) {
-                              console.error("Error deleting record:", error);
-                              alert("Error al eliminar el historial clínico");
                             }
-                          }
+                          );
                         }}
                         className="text-red-600 hover:text-red-900 ml-4"
                       >

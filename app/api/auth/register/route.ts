@@ -70,6 +70,9 @@ export async function POST(request: NextRequest) {
 
     if (tempAdmin) {
       // Reemplazar al administrador temporal con el nuevo usuario
+      // Guardar el tenantId del admin temporal antes de borrarlo
+      const tenantId = tempAdmin.tenantId;
+
       // Primero eliminar el admin temporal
       await prisma.user.delete({
         where: { id: tempAdmin.id },
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
           phone: data.phone?.trim() || null,
           isTemporaryAdmin: false,
           recoverySecret: hashedRecoverySecret,
+          tenantId: tenantId, // Asignar al mismo tenant
         },
         select: {
           id: true,
@@ -95,11 +99,32 @@ export async function POST(request: NextRequest) {
           role: true,
           phone: true,
           createdAt: true,
+          tenantId: true,
         },
       });
 
       replacedTempAdmin = true;
     } else {
+      // Para usuarios subsecuentes, necesitan un tenantId
+      // Por ahora, si no se envía, intentamos usar el primer tenant disponible (para compatibilidad)
+      // En un sistema SaaS real, esto vendría del subdominio o invitación
+      let tenantId = (body as any).tenantId;
+
+      if (!tenantId) {
+        const defaultTenant = await prisma.tenant.findFirst();
+        if (defaultTenant) {
+          tenantId = defaultTenant.id;
+        } else {
+          return NextResponse.json(
+            {
+              error:
+                "No se encontró un tenant válido y no se proporcionó tenantId",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
       // Crear usuario normal
       user = await prisma.user.create({
         data: {
@@ -111,6 +136,7 @@ export async function POST(request: NextRequest) {
           phone: data.phone?.trim() || null,
           isTemporaryAdmin: false,
           recoverySecret: hashedRecoverySecret,
+          tenantId: tenantId,
         },
         select: {
           id: true,
@@ -120,6 +146,7 @@ export async function POST(request: NextRequest) {
           role: true,
           phone: true,
           createdAt: true,
+          tenantId: true,
         },
       });
     }

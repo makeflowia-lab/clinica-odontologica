@@ -45,9 +45,12 @@ export async function GET(request: NextRequest) {
       999
     );
 
-    // Build where clause for dentist-specific data
+    // Build where clause for dentist-specific data AND tenant isolation
+    const baseFilter = { tenantId: user.tenantId };
     const dentistFilter =
-      user.role === "DENTIST" ? { dentistId: user.userId } : {};
+      user.role === "DENTIST"
+        ? { ...baseFilter, dentistId: user.userId }
+        : baseFilter;
 
     // Parallel queries for all statistics
     const [
@@ -71,12 +74,15 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Total patients
-      prisma.patient.count(),
+      // Total patients (Tenant isolated)
+      prisma.patient.count({
+        where: baseFilter,
+      }),
 
-      // Monthly revenue from paid invoices
+      // Monthly revenue from paid invoices (Tenant isolated)
       prisma.invoice.aggregate({
         where: {
+          tenantId: user.tenantId,
           status: "PAID",
           date: {
             gte: startOfMonth,
@@ -88,9 +94,10 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Pending payments
+      // Pending payments (Tenant isolated)
       prisma.invoice.aggregate({
         where: {
+          tenantId: user.tenantId,
           status: {
             in: ["PENDING", "OVERDUE"],
           },
@@ -149,12 +156,15 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Low stock items
-      prisma.$queryRaw`
-        SELECT COUNT(*) as count
-        FROM materials
-        WHERE "stockQuantity" <= "minStockLevel"
-      `,
+      // Low stock items (Tenant isolated)
+      prisma.material.count({
+        where: {
+          tenantId: user.tenantId,
+          stockQuantity: {
+            lte: prisma.material.fields.minStockLevel,
+          },
+        },
+      }),
     ]);
 
     // Calculate pending payment amount
@@ -162,11 +172,8 @@ export async function GET(request: NextRequest) {
       (pendingPayments._sum.total?.toNumber() || 0) -
       (pendingPayments._sum.paid?.toNumber() || 0);
 
-    // Get low stock count
-    const lowStockCount =
-      Array.isArray(lowStockItems) && lowStockItems.length > 0
-        ? Number(lowStockItems[0].count)
-        : 0;
+    // Get low stock count (using count directly now)
+    const lowStockCount = lowStockItems;
 
     const stats = {
       todayAppointments,

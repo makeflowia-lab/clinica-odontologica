@@ -21,6 +21,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 // TODO: Reemplazar con tu Publishable Key de Stripe en producción
 const stripePromise = loadStripe(
@@ -186,6 +187,51 @@ export default function BillingPage() {
 
   const [patients, setPatients] = useState<any[]>([]);
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant: "danger",
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
   useEffect(() => {
     // Cargar facturas
     loadInvoices();
@@ -338,12 +384,13 @@ export default function BillingPage() {
         loadInvoices();
         setShowNewModal(false);
         resetForm();
+        showAlert("Éxito", "Factura creada correctamente", "info");
       } else {
-        alert("Error al crear la factura");
+        showAlert("Error", "Error al crear la factura", "danger");
       }
     } catch (error) {
       console.error("Error creating invoice:", error);
-      alert("Error al crear la factura");
+      showAlert("Error", "Error al crear la factura", "danger");
     }
   };
 
@@ -381,7 +428,7 @@ export default function BillingPage() {
     };
 
     if (!selectedInvoice) {
-      alert("Error: No se seleccionó ninguna factura");
+      showAlert("Error", "Error: No se seleccionó ninguna factura", "danger");
       return;
     }
 
@@ -405,7 +452,7 @@ export default function BillingPage() {
       });
 
       if (!response.ok) {
-        alert("Error al actualizar la factura");
+        showAlert("Error", "Error al actualizar la factura", "danger");
         return;
       }
 
@@ -426,7 +473,11 @@ export default function BillingPage() {
       setSelectedInvoice(null);
     } catch (error) {
       console.error("Error al procesar el pago:", error);
-      alert("Error al procesar el pago. Por favor intente de nuevo.");
+      showAlert(
+        "Error",
+        "Error al procesar el pago. Por favor intente de nuevo.",
+        "danger"
+      );
     }
   };
 
@@ -454,7 +505,11 @@ export default function BillingPage() {
       setSelectedInvoice(null);
     } catch (error) {
       console.error("Error al generar ticket:", error);
-      alert("Pago procesado pero hubo un error al generar el ticket");
+      showAlert(
+        "Error",
+        "Pago procesado pero hubo un error al generar el ticket",
+        "warning"
+      );
       setShowPaymentModal(false);
       setSelectedInvoice(null);
       loadInvoices();
@@ -548,56 +603,64 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
 
     // Mostrar confirmación con opciones de envío
     // Mostrar confirmación
-    alert(
+    showAlert(
+      "Pago Registrado",
       `✅ PAGO REGISTRADO EXITOSAMENTE\n\n` +
         `Factura: ${invoice.id}\n` +
         `Paciente: ${invoice.patientName}\n` +
         `Total Pagado: $${invoice.total.toLocaleString()}\n` +
         `Método: ${paymentMethod}\n\n` +
-        `📄 El comprobante se ha descargado automáticamente.`
+        `📄 El comprobante se ha descargado automáticamente.`,
+      "info"
     );
   };
 
   const handleMarkAsPaid = async (invoice: Invoice) => {
-    if (!confirm(`¿Marcar factura ${invoice.id} como pagada?`)) {
-      return;
-    }
+    showConfirm(
+      "Marcar como Pagada",
+      `¿Marcar factura ${invoice.id} como pagada?`,
+      async () => {
+        try {
+          // Actualizar factura como pagada via API
+          const token = localStorage.getItem("token");
+          const response = await fetch("/api/invoices", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              id: invoice.id,
+              status: "PAID",
+              paymentMethod: "Efectivo",
+            }),
+          });
 
-    try {
-      // Actualizar factura como pagada via API
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/invoices", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          id: invoice.id,
-          status: "PAID",
-          paymentMethod: "Efectivo",
-        }),
-      });
+          if (!response.ok) {
+            showAlert("Error", "Error al actualizar la factura", "danger");
+            return;
+          }
 
-      if (!response.ok) {
-        alert("Error al actualizar la factura");
-        return;
+          // Recargar facturas
+          loadInvoices();
+
+          // Generar ticket automáticamente
+          const updatedInvoice = {
+            ...invoice,
+            status: "Pagada" as const,
+            paymentMethod: "Efectivo",
+          };
+          generateTicket(updatedInvoice, "Efectivo");
+        } catch (error) {
+          console.error("Error al marcar como pagada:", error);
+          showAlert(
+            "Error",
+            "Error al procesar. Por favor intente de nuevo.",
+            "danger"
+          );
+        }
       }
-
-      // Recargar facturas
-      loadInvoices();
-
-      // Generar ticket automáticamente
-      const updatedInvoice = {
-        ...invoice,
-        status: "Pagada" as const,
-        paymentMethod: "Efectivo",
-      };
-      generateTicket(updatedInvoice, "Efectivo");
-    } catch (error) {
-      console.error("Error al marcar como pagada:", error);
-      alert("Error al procesar. Por favor intente de nuevo.");
-    }
+    );
   };
 
   const handleDownloadPDF = async (invoice: Invoice) => {
@@ -734,12 +797,18 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       // Guardar PDF
       doc.save(`factura-${invoice.id}.pdf`);
 
-      alert(
-        `✅ Factura ${invoice.id} descargada\n\n✓ Formato: PDF\n✓ Lista para imprimir o enviar`
+      showAlert(
+        "Descarga Exitosa",
+        `✅ Factura ${invoice.id} descargada\n\n✓ Formato: PDF\n✓ Lista para imprimir o enviar`,
+        "info"
       );
     } catch (error) {
       console.error("Error al generar PDF:", error);
-      alert("Error al generar PDF. Por favor intente de nuevo.");
+      showAlert(
+        "Error",
+        "Error al generar PDF. Por favor intente de nuevo.",
+        "danger"
+      );
     }
   };
 
@@ -749,6 +818,17 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

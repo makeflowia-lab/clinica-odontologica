@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Treatment {
   id: string;
@@ -73,6 +74,34 @@ export default function TreatmentsPage() {
     cost: 0,
     notes: "",
   });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
 
   useEffect(() => {
     loadData();
@@ -140,16 +169,22 @@ export default function TreatmentsPage() {
         loadData();
         setShowModal(false);
         resetForm();
-        alert(
-          editingTreatment ? "Tratamiento actualizado" : "Tratamiento creado"
+        showAlert(
+          "Éxito",
+          editingTreatment ? "Tratamiento actualizado" : "Tratamiento creado",
+          "info"
         );
       } else {
         const err = await res.json();
-        alert(`Error: ${err.error || "Operación fallida"}`);
+        showAlert(
+          "Error",
+          `Error: ${err.error || "Operación fallida"}`,
+          "danger"
+        );
       }
     } catch (error) {
       console.error(error);
-      alert("Error al guardar tratamiento");
+      showAlert("Error", "Error al guardar tratamiento", "danger");
     }
   };
 
@@ -219,6 +254,18 @@ export default function TreatmentsPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

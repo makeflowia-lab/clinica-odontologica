@@ -3,16 +3,30 @@ import { PrismaClient } from "@prisma/client";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAuditLog } from "@/lib/audit-log";
+import { verifyToken, extractTokenFromHeader } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const user = verifyToken(token);
+
     const body = await request.json();
     const { apiKey, userId } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
+    }
+
+    // Verify user matches token or is admin
+    if (user.userId !== userId && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Rate Limiting: 5 updates per hour per user
@@ -69,6 +83,14 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const user = verifyToken(token);
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -76,12 +98,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
+    // Verify user matches token or is admin
+    if (user.userId !== userId && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    const userRecord = await prisma.user.findUnique({
       where: { id: userId },
       select: { openai_api_key_encrypted: true },
     });
 
-    if (user?.openai_api_key_encrypted) {
+    if (userRecord?.openai_api_key_encrypted) {
       // Audit log for viewing
       await createAuditLog({
         userId,
@@ -111,10 +138,23 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const token = extractTokenFromHeader(
+      request.headers.get("authorization") || ""
+    );
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const user = verifyToken(token);
+
     const { userId } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
+    }
+
+    // Verify user matches token or is admin
+    if (user.userId !== userId && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     await prisma.user.update({

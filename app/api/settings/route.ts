@@ -11,10 +11,13 @@ export async function GET(request: NextRequest) {
     );
     if (!token)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    verifyToken(token);
+    const user = verifyToken(token);
 
-    const setting = await prisma.setting.findUnique({
-      where: { key: SETTINGS_KEY },
+    const setting = await prisma.setting.findFirst({
+      where: {
+        key: SETTINGS_KEY,
+        tenantId: user.tenantId, // Enforce tenant isolation
+      },
     });
 
     // Default settings if not found
@@ -49,14 +52,24 @@ export async function POST(request: NextRequest) {
     );
     if (!token)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
 
     const setting = await prisma.setting.upsert({
-      where: { key: SETTINGS_KEY },
+      where: {
+        tenantId_key: {
+          // Use composite unique key
+          tenantId: user.tenantId,
+          key: SETTINGS_KEY,
+        },
+      },
       update: { value: body },
-      create: { key: SETTINGS_KEY, value: body },
+      create: {
+        tenantId: user.tenantId, // Assign to tenant
+        key: SETTINGS_KEY,
+        value: body,
+      },
     });
 
     return NextResponse.json(setting.value);

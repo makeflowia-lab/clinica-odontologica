@@ -17,14 +17,17 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-    verifyToken(token);
+    const user = verifyToken(token);
 
     const body = await request.json();
     const data = usedInventorySchema.parse(body);
 
-    // Get the current material
-    const material = await prisma.material.findUnique({
-      where: { id: data.itemId },
+    // Get the current material and verify it belongs to tenant
+    const material = await prisma.material.findFirst({
+      where: {
+        id: data.itemId,
+        tenantId: user.tenantId, // Enforce tenant isolation
+      },
     });
 
     if (!material) {

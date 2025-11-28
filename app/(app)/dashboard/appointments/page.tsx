@@ -16,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { exportAppointmentsToExcel } from "@/lib/excel-export";
-import { Modal } from "@/app/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Appointment {
   id: string;
@@ -357,7 +357,7 @@ const AppointmentsPage = () => {
           try {
             msg = (await err.json()).error || msg;
           } catch {}
-          alert(msg);
+          showAlert("Error", msg);
         });
     }
   };
@@ -1101,37 +1101,22 @@ const AppointmentsPage = () => {
         </div>
       )}
 
-      {/* Render Modal */}
-      <Modal
+      {/* Render ConfirmDialog */}
+      <ConfirmDialog
         isOpen={modalState.isOpen}
-        onClose={closeModal}
         title={modalState.title}
-        footer={
-          <>
-            {modalState.type === "confirm" && (
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-            )}
-            <button
-              onClick={() => {
-                if (modalState.type === "confirm" && modalState.onConfirm) {
-                  modalState.onConfirm();
-                }
-                closeModal();
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Aceptar
-            </button>
-          </>
-        }
-      >
-        <p className="whitespace-pre-line">{modalState.message}</p>
-      </Modal>
+        message={modalState.message}
+        onConfirm={() => {
+          if (modalState.onConfirm) {
+            modalState.onConfirm();
+          }
+          closeModal();
+        }}
+        onCancel={closeModal}
+        confirmText="Aceptar"
+        cancelText={modalState.type === "confirm" ? "Cancelar" : undefined}
+        variant={modalState.type === "alert" ? "info" : "danger"}
+      />
     </div>
   );
 };
