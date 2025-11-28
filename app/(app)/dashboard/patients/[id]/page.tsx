@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import ImageOdontogram from "@/components/odontogram/ImageOdontogram";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Patient {
   id: string;
@@ -49,6 +50,34 @@ export default function PatientDetailPage() {
   const [odontogramData, setOdontogramData] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
 
   useEffect(() => {
     if (id) {
@@ -145,14 +174,14 @@ export default function PatientDetailPage() {
       });
 
       if (res.ok) {
-        alert("Odontograma guardado exitosamente");
+        showAlert("Éxito", "Odontograma guardado exitosamente", "info");
         loadOdontogram();
       } else {
-        alert("Error al guardar odontograma");
+        showAlert("Error", "Error al guardar odontograma", "danger");
       }
     } catch (error) {
       console.error("Error saving odontogram:", error);
-      alert("Error de conexión");
+      showAlert("Error", "Error de conexión", "danger");
     }
   };
 
@@ -197,6 +226,17 @@ export default function PatientDetailPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

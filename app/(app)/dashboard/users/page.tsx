@@ -148,105 +148,112 @@ export default function UsersPage() {
           <span>Nuevo Usuario</span>
         </button>
       </div>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[640px]">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Teléfono
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users.length === 0 ? (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col max-h-[calc(100vh-200px)]">
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full min-w-[640px]">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-500">
-                  No hay usuarios registrados.
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Teléfono
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rol
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
               </tr>
-            ) : (
-              users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.firstName} {user.lastName}
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-gray-500">
+                    No hay usuarios registrados.
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.phone}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.role === "ADMIN" ? (
-                      <Shield className="w-4 h-4 inline text-purple-600 mr-1" />
-                    ) : null}
-                    {user.role === "DENTIST" ? (
-                      <Stethoscope className="w-4 h-4 inline text-blue-600 mr-1" />
-                    ) : null}
-                    {user.role === "ASSISTANT" ? (
-                      <User className="w-4 h-4 inline text-green-600 mr-1" />
-                    ) : null}
-                    <span>{user.role}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      title="Eliminar usuario"
-                      onClick={async () => {
-                        showConfirm(
-                          "Eliminar Usuario",
-                          "¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.",
-                          async () => {
-                            try {
-                              const token = localStorage.getItem("token");
-                              const response = await fetch(
-                                `/api/users/dentists?id=${user.id}`,
-                                {
-                                  method: "DELETE",
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                }
-                              );
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.firstName} {user.lastName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.role === "ADMIN" ? (
+                        <Shield className="w-4 h-4 inline text-purple-600 mr-1" />
+                      ) : null}
+                      {user.role === "DENTIST" ? (
+                        <Stethoscope className="w-4 h-4 inline text-blue-600 mr-1" />
+                      ) : null}
+                      {user.role === "ASSISTANT" ? (
+                        <User className="w-4 h-4 inline text-green-600 mr-1" />
+                      ) : null}
+                      <span>{user.role}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        title="Eliminar usuario"
+                        onClick={async () => {
+                          showConfirm(
+                            "Eliminar Usuario",
+                            "¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.",
+                            async () => {
+                              try {
+                                const token = localStorage.getItem("token");
+                                const response = await fetch(
+                                  `/api/users/dentists?id=${user.id}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      Authorization: `Bearer ${token}`,
+                                    },
+                                  }
+                                );
 
-                              if (response.ok) {
-                                loadUsers();
-                              } else {
-                                const data = await response.json();
+                                if (response.ok) {
+                                  loadUsers();
+                                } else {
+                                  const data = await response.json();
+                                  showAlert(
+                                    "Error",
+                                    data.error ||
+                                      "Error al eliminar el usuario",
+                                    "danger"
+                                  );
+                                }
+                              } catch (error) {
+                                console.error("Error deleting user:", error);
                                 showAlert(
                                   "Error",
-                                  data.error || "Error al eliminar el usuario",
+                                  "Error al eliminar el usuario",
                                   "danger"
                                 );
                               }
-                            } catch (error) {
-                              console.error("Error deleting user:", error);
-                              showAlert(
-                                "Error",
-                                "Error al eliminar el usuario",
-                                "danger"
-                              );
                             }
-                          }
-                        );
-                      }}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                          );
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       {/* Modal Nuevo Usuario */}
       {showNewModal && (

@@ -14,11 +14,40 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export default function NewPatientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -111,7 +140,10 @@ export default function NewPatientPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert("Paciente creado exitosamente");
+        showAlert("Éxito", "Paciente creado exitosamente", "info");
+        setTimeout(() => {
+          router.push("/dashboard/patients");
+        }, 2000);
         router.push(`/dashboard/patients/${data.patient.id}`);
       } else {
         const data = await response.json();
@@ -134,6 +166,17 @@ export default function NewPatientPage() {
 
   return (
     <div>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+        confirmText="Aceptar"
+        variant={confirmDialog.variant}
+      />
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">

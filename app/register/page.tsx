@@ -39,8 +39,8 @@ export default function RegisterPage() {
       }
 
       // Show success message and redirect to login
-      alert("Usuario registrado exitosamente. Por favor inicia sesión.");
-      router.push("/login");
+      // alert("Usuario registrado exitosamente. Por favor inicia sesión.");
+      window.location.href = "/login?registered=true";
     } catch (err: any) {
       setError(err.message || "Error al registrar usuario");
     } finally {

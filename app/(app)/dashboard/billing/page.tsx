@@ -1026,34 +1026,52 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                         </button>
                         <button
                           title="Eliminar factura"
-                          onClick={async () => {
-                            if (
-                              confirm(
-                                "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer."
-                              )
-                            ) {
-                              try {
-                                const token = localStorage.getItem("token");
-                                const response = await fetch(
-                                  `/api/invoices?id=${invoice.id}`,
-                                  {
-                                    method: "DELETE",
-                                    headers: {
-                                      Authorization: `Bearer ${token}`,
-                                    },
-                                  }
-                                );
+                          onClick={() => {
+                            setConfirmDialog({
+                              isOpen: true,
+                              title: "Eliminar Factura",
+                              message:
+                                "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.",
+                              variant: "danger",
+                              onConfirm: async () => {
+                                try {
+                                  const token = localStorage.getItem("token");
+                                  const response = await fetch(
+                                    `/api/invoices?id=${invoice.id}`,
+                                    {
+                                      method: "DELETE",
+                                      headers: {
+                                        Authorization: `Bearer ${token}`,
+                                      },
+                                    }
+                                  );
 
-                                if (response.ok) {
-                                  loadInvoices();
-                                } else {
-                                  alert("Error al eliminar la factura");
+                                  if (response.ok) {
+                                    loadInvoices();
+                                    setConfirmDialog((prev) => ({
+                                      ...prev,
+                                      isOpen: false,
+                                    }));
+                                  } else {
+                                    showAlert(
+                                      "Error",
+                                      "Error al eliminar la factura",
+                                      "danger"
+                                    );
+                                  }
+                                } catch (error) {
+                                  console.error(
+                                    "Error deleting invoice:",
+                                    error
+                                  );
+                                  showAlert(
+                                    "Error",
+                                    "Error al eliminar la factura",
+                                    "danger"
+                                  );
                                 }
-                              } catch (error) {
-                                console.error("Error deleting invoice:", error);
-                                alert("Error al eliminar la factura");
-                              }
-                            }
+                              },
+                            });
                           }}
                           className="text-red-600 hover:text-red-900"
                         >
