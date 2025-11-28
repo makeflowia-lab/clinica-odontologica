@@ -156,9 +156,7 @@ export async function POST(request: NextRequest) {
         allergies: data.allergies || [],
         medicalConditions: data.medicalConditions || [],
         medications: data.medications || [],
-        createdBy: {
-          connect: { id: user.userId },
-        },
+        createdById: user.userId,
       },
     });
 
