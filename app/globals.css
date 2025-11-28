@@ -71,6 +71,8 @@ body {
 /* Ocultar overlay de errores de Next.js en desarrollo */
 nextjs-portal,
 [data-nextjs-dialog-overlay],
-[data-nextjs-toast] {
+[data-nextjs-toast],
+vercel-live-feedback,
+#vercel-toolbar {
   display: none !important;
 }

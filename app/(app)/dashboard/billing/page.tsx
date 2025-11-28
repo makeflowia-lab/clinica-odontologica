@@ -1156,7 +1156,7 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vencimiento *
+                    Vencimiento
                   </label>
                   <input
                     type="date"
@@ -1335,7 +1335,7 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                 <button
                   title="Crear factura"
                   onClick={handleCreateInvoice}
-                  disabled={!formData.patientName || !formData.dueDate}
+                  disabled={!formData.patientName}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />

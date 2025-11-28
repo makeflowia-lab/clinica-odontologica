@@ -41,6 +41,11 @@ interface Settings {
   invoiceTerms?: string;
   billing?: {
     taxId: string;
+    logo?: string;
+    clinicName?: string;
+    dentistName?: string;
+    phone?: string;
+    email?: string;
   };
 }
 
@@ -67,7 +72,14 @@ const defaultSettings: Settings = {
   invoiceColor: "#2563eb",
   invoiceFooter: "",
   invoiceTerms: "",
-  billing: { taxId: "" },
+  billing: {
+    taxId: "",
+    logo: "",
+    clinicName: "",
+    dentistName: "",
+    phone: "",
+    email: "",
+  },
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(

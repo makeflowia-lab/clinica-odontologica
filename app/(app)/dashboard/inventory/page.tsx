@@ -323,14 +323,6 @@ export default function InventoryPage() {
             <Plus className="w-4 h-4" />
             <span>Agregar Producto</span>
           </button>
-          <button
-            title="Ingreso de Inventario Usado"
-            onClick={() => setShowUsedModal(true)}
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
-          >
-            <Minus className="w-4 h-4" />
-            <span>Ingreso Usado</span>
-          </button>
         </div>
       </div>
 
