@@ -376,35 +376,33 @@ export default function Odontogram({
         </div>
       )}
 
-      {/* Responsive container that scales the entire odontogram as one unit on mobile */}
-      <div className="w-full overflow-x-auto">
-        <div className="min-w-[1100px] md:min-w-0 origin-top-left scale-[0.35] sm:scale-50 md:scale-75 lg:scale-90 xl:scale-100">
-          <div className="flex flex-col items-center space-y-8 py-4">
-            {/* Upper Teeth */}
-            <div className="flex gap-1">
-              {TOOTH_NUMBERS.slice(0, 16).map((num) => (
-                <Tooth
-                  key={num}
-                  number={num}
-                  data={toothData[num]}
-                  onClick={handleToothClick}
-                  selectedStatus={selectedStatus}
-                />
-              ))}
-            </div>
+      {/* Scrollable container for mobile - keeps everything aligned */}
+      <div className="w-full overflow-x-auto pb-4">
+        <div className="min-w-max flex flex-col items-center space-y-8 py-4">
+          {/* Upper Teeth */}
+          <div className="flex gap-1">
+            {TOOTH_NUMBERS.slice(0, 16).map((num) => (
+              <Tooth
+                key={num}
+                number={num}
+                data={toothData[num]}
+                onClick={handleToothClick}
+                selectedStatus={selectedStatus}
+              />
+            ))}
+          </div>
 
-            {/* Lower Teeth */}
-            <div className="flex gap-1">
-              {TOOTH_NUMBERS.slice(16).map((num) => (
-                <Tooth
-                  key={num}
-                  number={num}
-                  data={toothData[num]}
-                  onClick={handleToothClick}
-                  selectedStatus={selectedStatus}
-                />
-              ))}
-            </div>
+          {/* Lower Teeth */}
+          <div className="flex gap-1">
+            {TOOTH_NUMBERS.slice(16).map((num) => (
+              <Tooth
+                key={num}
+                number={num}
+                data={toothData[num]}
+                onClick={handleToothClick}
+                selectedStatus={selectedStatus}
+              />
+            ))}
           </div>
         </div>
       </div>
