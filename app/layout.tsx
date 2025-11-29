@@ -3,8 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Clínica Dental SaaS - Gestión Integral",
-  description:
-    "Sistema completo de gestión para clínicas dentales con Neo4j y IA",
+  description: "Sistema de gestión para clínicas dentales",
 };
 
 export default function RootLayout({
