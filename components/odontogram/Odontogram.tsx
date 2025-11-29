@@ -91,9 +91,15 @@ const Tooth = ({
   const isLower = quadrant === 3 || quadrant === 4;
 
   return (
-    <div className="flex flex-col items-center m-1">
-      <span className="text-xs font-bold text-gray-600 mb-1">{number}</span>
-      <div className={`relative w-16 h-24 ${isLower ? "rotate-180" : ""}`}>
+    <div className="flex flex-col items-center m-1 relative">
+      <span className="text-xs font-bold text-gray-600 mb-1 select-none">
+        {number}
+      </span>
+      <div
+        className={`relative w-16 h-24 flex-shrink-0 ${
+          isLower ? "rotate-180" : ""
+        }`}
+      >
         {isMissing ? (
           <svg
             viewBox="0 0 100 150"

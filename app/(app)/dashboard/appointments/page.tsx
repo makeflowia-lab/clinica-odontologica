@@ -586,118 +586,123 @@ const AppointmentsPage = () => {
             <p className="text-gray-500">No hay citas para esta fecha</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {filteredAppointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="p-6 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <User className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {appointment.patientName}
-                        </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span className="flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {appointment.time} ({appointment.duration} min)
-                          </span>
-                          <span className="flex items-center">
-                            <Phone className="w-4 h-4 mr-1" />
-                            {appointment.patientPhone}
-                          </span>
+          <div className="max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-gray-200">
+              {filteredAppointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="p-6 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {appointment.patientName}
+                          </h3>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <span className="flex items-center">
+                              <Clock className="w-4 h-4 mr-1" />
+                              {appointment.time} ({appointment.duration} min)
+                            </span>
+                            <span className="flex items-center">
+                              <Phone className="w-4 h-4 mr-1" />
+                              {appointment.patientPhone}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="ml-13">
-                      <p className="text-gray-700 mb-2">
-                        <strong>Motivo:</strong> {appointment.reason}
-                      </p>
-                      {appointment.notes && (
-                        <p className="text-sm text-gray-600">
-                          <strong>Notas:</strong> {appointment.notes}
+                      <div className="ml-13">
+                        <p className="text-gray-700 mb-2">
+                          <strong>Motivo:</strong> {appointment.reason}
                         </p>
-                      )}
+                        {appointment.notes && (
+                          <p className="text-sm text-gray-600">
+                            <strong>Notas:</strong> {appointment.notes}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <label className="text-xs font-medium text-gray-600">
-                        Estado:
-                      </label>
-                      <select
-                        title="Cambiar estado de la cita"
-                        value={appointment.status}
-                        onChange={(e) =>
-                          handleStatusChange(appointment.id, e.target.value)
-                        }
-                        className={`px-3 py-1 rounded-full text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${getStatusColor(
-                          appointment.status
-                        )}`}
+                    <div className="flex flex-col items-end space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <label className="text-xs font-medium text-gray-600">
+                          Estado:
+                        </label>
+                        <select
+                          title="Cambiar estado de la cita"
+                          value={appointment.status}
+                          onChange={(e) =>
+                            handleStatusChange(appointment.id, e.target.value)
+                          }
+                          className={`px-3 py-1 rounded-full text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${getStatusColor(
+                            appointment.status
+                          )}`}
+                        >
+                          <option value="scheduled">Programada</option>
+                          <option value="confirmed">Confirmada</option>
+                          <option value="completed">Completada</option>
+                          <option value="cancelled">Cancelada</option>
+                        </select>
+                      </div>
+
+                      <button
+                        title="Editar cita"
+                        onClick={() => handleEditAppointment(appointment)}
+                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
                       >
-                        <option value="scheduled">Programada</option>
-                        <option value="confirmed">Confirmada</option>
-                        <option value="completed">Completada</option>
-                        <option value="cancelled">Cancelada</option>
-                      </select>
-                    </div>
+                        <Edit2 className="w-3 h-3" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        title="Eliminar cita"
+                        onClick={() => {
+                          showConfirm(
+                            "Eliminar Cita",
+                            "¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.",
+                            async () => {
+                              try {
+                                const token = localStorage.getItem("token");
+                                const response = await fetch(
+                                  `/api/appointments?id=${appointment.id}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      Authorization: `Bearer ${token}`,
+                                    },
+                                  }
+                                );
 
-                    <button
-                      title="Editar cita"
-                      onClick={() => handleEditAppointment(appointment)}
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      <span>Editar</span>
-                    </button>
-                    <button
-                      title="Eliminar cita"
-                      onClick={() => {
-                        showConfirm(
-                          "Eliminar Cita",
-                          "¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.",
-                          async () => {
-                            try {
-                              const token = localStorage.getItem("token");
-                              const response = await fetch(
-                                `/api/appointments?id=${appointment.id}`,
-                                {
-                                  method: "DELETE",
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
+                                if (response.ok) {
+                                  loadAppointments();
+                                } else {
+                                  showAlert(
+                                    "Error",
+                                    "Error al eliminar la cita"
+                                  );
                                 }
-                              );
-
-                              if (response.ok) {
-                                loadAppointments();
-                              } else {
+                              } catch (error) {
+                                console.error(
+                                  "Error deleting appointment:",
+                                  error
+                                );
                                 showAlert("Error", "Error al eliminar la cita");
                               }
-                            } catch (error) {
-                              console.error(
-                                "Error deleting appointment:",
-                                error
-                              );
-                              showAlert("Error", "Error al eliminar la cita");
                             }
-                          }
-                        );
-                      }}
-                      className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Eliminar</span>
-                    </button>
+                          );
+                        }}
+                        className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
