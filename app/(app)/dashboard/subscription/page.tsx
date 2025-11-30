@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { SubscriptionStatus } from "@/components/SubscriptionStatus";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Plan {
   id: string;
@@ -69,6 +70,19 @@ const PLANS: Plan[] = [
 export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "info" | "danger" | "warning";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     fetch("/api/subscription")
@@ -80,9 +94,32 @@ export default function SubscriptionPage() {
       });
   }, []);
 
-  const handleUpgrade = async (planId: string) => {
-    if (!confirm(`¿Estás seguro de cambiar al plan ${planId}?`)) return;
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: "info" | "danger" | "warning" = "info"
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
 
+  const handleUpgradeClick = (planId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Confirmar cambio de plan",
+      message: `¿Estás seguro de cambiar al plan ${planId}?`,
+      variant: "info",
+      onConfirm: () => processUpgrade(planId),
+    });
+  };
+
+  const processUpgrade = async (planId: string) => {
+    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     setLoading(true);
     try {
       const res = await fetch("/api/subscription/upgrade", {
@@ -92,15 +129,19 @@ export default function SubscriptionPage() {
       });
 
       if (res.ok) {
-        alert("Plan actualizado correctamente!");
-        window.location.reload();
+        showAlert(
+          "Éxito",
+          "Plan actualizado correctamente. La página se recargará.",
+          "info"
+        );
+        setTimeout(() => window.location.reload(), 2000);
       } else {
         const err = await res.json();
-        alert(err.error || "Error al actualizar plan");
+        showAlert("Error", err.error || "Error al actualizar plan", "danger");
       }
     } catch (error) {
       console.error(error);
-      alert("Error de conexión");
+      showAlert("Error", "Error de conexión", "danger");
     } finally {
       setLoading(false);
     }
@@ -153,7 +194,7 @@ export default function SubscriptionPage() {
                 </ul>
 
                 <button
-                  onClick={() => handleUpgrade(plan.id)}
+                  onClick={() => handleUpgradeClick(plan.id)}
                   disabled={loading || currentPlan === plan.id}
                   className={`mt-8 w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
                     currentPlan === plan.id
@@ -196,6 +237,17 @@ export default function SubscriptionPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+      />
     </div>
   );
 }

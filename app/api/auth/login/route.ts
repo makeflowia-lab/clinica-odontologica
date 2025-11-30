@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { comparePassword, generateToken } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
+import { getSubscription } from "@/lib/subscription";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -11,6 +12,12 @@ const loginSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Force email to lowercase
+    if (body.email) {
+      body.email = body.email.toLowerCase();
+    }
+
     const data = loginSchema.parse(body);
 
     // Find user by email
@@ -33,6 +40,14 @@ export async function POST(request: NextRequest) {
         { error: "Credenciales inválidas" },
         { status: 401 }
       );
+    }
+
+    // Ensure subscription exists
+    try {
+      await getSubscription(user.tenantId);
+    } catch (subError) {
+      console.error("Error initializing subscription on login:", subError);
+      // Continue login even if subscription check fails, but log it
     }
 
     // Generate JWT token
