@@ -357,6 +357,22 @@ export default function BillingPage() {
   };
 
   const handleCreateInvoice = async () => {
+    // Validación de campos requeridos
+    if (!formData.patientId) {
+      showAlert("Error", "Por favor selecciona un paciente", "danger");
+      return;
+    }
+
+    if (!formData.date) {
+      showAlert("Error", "Por favor selecciona una fecha", "danger");
+      return;
+    }
+
+    if (formData.items.length === 0 || !formData.items[0].description) {
+      showAlert("Error", "Por favor agrega al menos un concepto", "danger");
+      return;
+    }
+
     const { subtotal, tax, total } = calculateTotals();
 
     try {
@@ -376,6 +392,7 @@ export default function BillingPage() {
             quantity: item.quantity,
             unitPrice: item.price,
           })),
+          notes: formData.notes || "",
           status: "PENDING",
         }),
       });
@@ -386,7 +403,13 @@ export default function BillingPage() {
         resetForm();
         showAlert("Éxito", "Factura creada correctamente", "info");
       } else {
-        showAlert("Error", "Error al crear la factura", "danger");
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        showAlert(
+          "Error",
+          errorData.error || "Error al crear la factura",
+          "danger"
+        );
       }
     } catch (error) {
       console.error("Error creating invoice:", error);
