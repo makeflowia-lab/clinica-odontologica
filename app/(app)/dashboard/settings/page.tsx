@@ -441,11 +441,11 @@ export default function SettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre del Veterinario
+                        Nombre del Médico Odontólogo
                       </label>
                       <input
                         type="text"
-                        title="Nombre del veterinario para la factura"
+                        title="Nombre del médico odontólogo para la factura"
                         value={settings?.billing?.dentistName || ""}
                         onChange={(e) =>
                           updateSettings({
