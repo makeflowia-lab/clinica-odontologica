@@ -192,8 +192,12 @@ const Tooth = ({
                   : "M35,30 L65,30 L65,50 L35,50 Z" // Slightly higher for anterior
               }
               fill={getColor(surfaces.occlusal)}
-              stroke={surfaces.occlusal !== "HEALTHY" ? "#000" : "#cbd5e1"}
-              strokeWidth="1"
+              stroke={
+                surfaces.occlusal !== "HEALTHY"
+                  ? getColor(surfaces.occlusal)
+                  : "#cbd5e1"
+              }
+              strokeWidth="2"
               fillOpacity="0.9"
               className="cursor-pointer hover:opacity-60"
               onClick={() => onClick(number, "occlusal")}
@@ -207,8 +211,12 @@ const Tooth = ({
                   : "M20,40 Q20,10 50,10 Q80,10 80,40 L65,30 L35,30 Z"
               }
               fill={getColor(surfaces.buccal)}
-              stroke={surfaces.buccal !== "HEALTHY" ? "#000" : "none"}
-              strokeWidth="1"
+              stroke={
+                surfaces.buccal !== "HEALTHY"
+                  ? getColor(surfaces.buccal)
+                  : "none"
+              }
+              strokeWidth="2"
               fillOpacity="0.8"
               className="cursor-pointer hover:opacity-60"
               onClick={() => onClick(number, "buccal")}
@@ -222,8 +230,12 @@ const Tooth = ({
                   : "M35,50 L65,50 L80,40 Q80,45 75,50 L65,140 Q50,145 35,140 L25,50 Q20,45 20,40 Z"
               }
               fill={getColor(surfaces.lingual)}
-              stroke={surfaces.lingual !== "HEALTHY" ? "#000" : "none"}
-              strokeWidth="1"
+              stroke={
+                surfaces.lingual !== "HEALTHY"
+                  ? getColor(surfaces.lingual)
+                  : "none"
+              }
+              strokeWidth="2"
               fillOpacity="0.8"
               className="cursor-pointer hover:opacity-60"
               onClick={() => onClick(number, "lingual")}
@@ -237,8 +249,12 @@ const Tooth = ({
                   : "M20,40 L35,30 L35,50 L25,50 Q20,45 20,40 Z"
               }
               fill={getColor(surfaces.mesial)}
-              stroke={surfaces.mesial !== "HEALTHY" ? "#000" : "none"}
-              strokeWidth="1"
+              stroke={
+                surfaces.mesial !== "HEALTHY"
+                  ? getColor(surfaces.mesial)
+                  : "none"
+              }
+              strokeWidth="2"
               fillOpacity="0.8"
               className="cursor-pointer hover:opacity-60"
               onClick={() => onClick(number, "mesial")}
@@ -252,8 +268,12 @@ const Tooth = ({
                   : "M80,40 L65,30 L65,50 L75,50 Q80,45 80,40 Z"
               }
               fill={getColor(surfaces.distal)}
-              stroke={surfaces.distal !== "HEALTHY" ? "#000" : "none"}
-              strokeWidth="1"
+              stroke={
+                surfaces.distal !== "HEALTHY"
+                  ? getColor(surfaces.distal)
+                  : "none"
+              }
+              strokeWidth="2"
               fillOpacity="0.8"
               className="cursor-pointer hover:opacity-60"
               onClick={() => onClick(number, "distal")}
