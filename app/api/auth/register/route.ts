@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";
+import { getSubscription, checkSubscriptionLimit } from "@/lib/subscription";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest) {
       // Guardar el tenantId del admin temporal antes de borrarlo
       const tenantId = tempAdmin.tenantId;
 
+      // Ensure subscription exists for this tenant
+      await getSubscription(tenantId);
+
       // Primero eliminar el admin temporal
       await prisma.user.delete({
         where: { id: tempAdmin.id },
@@ -123,6 +127,15 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+      }
+
+      // Check subscription limits for users
+      const limitCheck = await checkSubscriptionLimit(tenantId, "users");
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          { error: limitCheck.message, code: "LIMIT_REACHED" },
+          { status: 403 }
+        );
       }
 
       // Crear usuario normal

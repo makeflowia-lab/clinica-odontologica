@@ -20,6 +20,7 @@ import {
   Bell,
 } from "lucide-react";
 import DigitalAssistant from "@/components/DigitalAssistant";
+import { SidebarSubscription } from "@/components/SidebarSubscription";
 
 import { SettingsProvider, useSettings } from "@/app/context/SettingsContext";
 
@@ -105,10 +106,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <aside
         className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } bg-white border-r border-gray-200 w-64 lg:translate-x-0`}
+        } bg-white border-r border-gray-200 w-64 lg:translate-x-0 flex flex-col`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200">
+        <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-2 min-w-0">
             {settings.clinic.logo ? (
               <img
@@ -133,7 +134,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* User Info */}
-        <div className="px-4 py-4 border-b border-gray-200">
+        <div className="px-4 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
               {user.firstName?.[0]}
@@ -175,28 +176,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-
-          {/* AI Voice Assistant */}
-          {/* AI Voice Assistant - Temporarily disabled
-          <button
-            title="Abrir asistente de voz con IA"
-            onClick={() => {
-              // @ts-ignore
-              if (window.n8nChat) {
-                // @ts-ignore
-                window.n8nChat.toggle();
-              }
-            }}
-            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors mt-4"
-          >
-            <Mic className="w-5 h-5" />
-            <span className="font-medium">Asistente IA</span>
-          </button>
-          */}
         </nav>
 
+        <SidebarSubscription />
+
         {/* Logout Button */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <button
             title="Cerrar sesión"
             onClick={handleLogout}

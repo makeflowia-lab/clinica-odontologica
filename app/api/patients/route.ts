@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 import { extractTokenFromHeader, verifyToken } from "@/lib/auth"; // Asegúrate de tener estas funciones
+import { checkSubscriptionLimit } from "@/lib/subscription";
 
 const patientSchema = z.object({
   firstName: z.string().min(1),
@@ -143,6 +144,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
     const user = verifyToken(token);
+
+    // Check subscription limits
+    const limitCheck = await checkSubscriptionLimit(user.tenantId, "patients");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: limitCheck.message, code: "LIMIT_REACHED" },
+        { status: 403 }
+      );
+    }
 
     const body = await request.json();
     const data = patientSchema.parse(body);

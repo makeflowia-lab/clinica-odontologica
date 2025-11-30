@@ -36,6 +36,7 @@ model Tenant {
   odontograms      Odontogram[]
   notifications    Notification[]
   settings_table   Setting[]
+  subscription     Subscription?
 
   @@map("tenants")
 }
@@ -471,3 +472,69 @@ enum NotificationStatus {
   SENT
   FAILED
 }
+
+// ============================================
+// SUBSCRIPTION SYSTEM
+// ============================================
+
+model Subscription {
+  id                  String             @id @default(uuid())
+  tenantId            String             @unique // One subscription per tenant
+  planType            SubscriptionPlan   @default(STARTER)
+  status              SubscriptionStatus @default(TRIAL)
+  
+  // Limits
+  maxPatients         Int                @default(100) // -1 for unlimited
+  maxUsers            Int                @default(1)   // -1 for unlimited
+  aiQueriesLimit      Int                @default(50)  // -1 for unlimited
+  
+  // Usage tracking
+  aiQueriesUsed       Int                @default(0)
+  currentPeriodStart  DateTime           @default(now())
+  currentPeriodEnd    DateTime
+  
+  // Trial
+  trialEndsAt         DateTime?
+  
+  // Billing
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  
+  // Metadata
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  
+  // Relations
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model PlanFeature {
+  id          String   @id @default(uuid())
+  planType    SubscriptionPlan
+  featureName String
+  featureValue String
+  createdAt   DateTime @default(now())
+  
+  @@unique([planType, featureName])
+  @@map("plan_features")
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PROFESSIONAL
+  ANNUAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+

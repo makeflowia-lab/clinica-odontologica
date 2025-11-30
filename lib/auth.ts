@@ -44,3 +44,18 @@ export function extractTokenFromHeader(authHeader?: string): string | null {
   }
   return authHeader.substring(7);
 }
+
+export async function getAuthUser(
+  request: Request
+): Promise<JWTPayload | null> {
+  const token = extractTokenFromHeader(
+    request.headers.get("authorization") || ""
+  );
+  if (!token) return null;
+
+  try {
+    return verifyToken(token);
+  } catch (error) {
+    return null;
+  }
+}

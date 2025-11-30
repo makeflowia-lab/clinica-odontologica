@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractTokenFromHeader } from "@/lib/auth";
 import { z } from "zod";
+import { checkSubscriptionLimit, incrementAiUsage } from "@/lib/subscription";
 
 const voiceCommandSchema = z.object({
   transcript: z.string().min(1),
@@ -231,6 +232,8 @@ async function handleViewSchedule(transcript: string, userId: string) {
   };
 }
 
+// ... (imports)
+
 // API endpoint
 export async function POST(request: NextRequest) {
   try {
@@ -242,13 +245,34 @@ export async function POST(request: NextRequest) {
     }
     const user = verifyToken(token);
 
+    // Check AI usage limit
+    const limitCheck = await checkSubscriptionLimit(
+      user.tenantId,
+      "ai_queries"
+    );
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: limitCheck.message,
+          action: "LIMIT_REACHED",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { transcript } = voiceCommandSchema.parse(body);
 
     const result = await processVoiceCommand(transcript, user.userId, token);
 
+    // Increment usage only if successful (or maybe always? let's do always for now as they used the service)
+    await incrementAiUsage(user.tenantId);
+
     return NextResponse.json(result);
   } catch (error) {
+    // ... (error handling)
+
     console.error("Voice AI error:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
