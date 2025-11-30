@@ -111,14 +111,42 @@ export async function POST(request: NextRequest) {
     const total = subtotal + tax;
 
     // Generate Invoice Number (Scoped to Tenant)
-    // For better format: INV-YYYY-XXXX
+    // Try to find a unique number
+    let invoiceNumber = "";
+    let isUnique = false;
+    let attempts = 0;
+
+    const year = new Date().getFullYear();
     const count = await prisma.invoice.count({
       where: { tenantId: user.tenantId },
     });
-    const year = new Date().getFullYear();
-    const invoiceNumber = `INV-${year}-${(count + 1)
-      .toString()
-      .padStart(4, "0")}`;
+
+    let currentSequence = count + 1;
+
+    while (!isUnique && attempts < 5) {
+      invoiceNumber = `INV-${year}-${currentSequence
+        .toString()
+        .padStart(4, "0")}`;
+
+      // Check if this number exists (globally or for tenant, depending on schema)
+      const existing = await prisma.invoice.findUnique({
+        where: { invoiceNumber },
+      });
+
+      if (!existing) {
+        isUnique = true;
+      } else {
+        currentSequence++;
+        attempts++;
+      }
+    }
+
+    if (!isUnique) {
+      // Fallback: append random string if we can't find a sequential one
+      invoiceNumber = `INV-${year}-${currentSequence}-${Math.floor(
+        Math.random() * 1000
+      )}`;
+    }
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -147,7 +175,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Create invoice error:", error);
     return NextResponse.json(
-      { error: "Error al crear factura" },
+      {
+        error:
+          error instanceof Error ? error.message : "Error al crear factura",
+        details: error,
+      },
       { status: 500 }
     );
   }
