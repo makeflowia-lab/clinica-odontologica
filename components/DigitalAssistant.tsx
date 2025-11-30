@@ -25,14 +25,20 @@ export default function DigitalAssistant() {
         display: none !important;
       }
       
-      /* Asegurar que el widget solo aparezca en páginas autenticadas */
+      /* Ocultar el widget por defecto en TODAS las páginas */
       .n8n-chat-widget {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
       
-      /* Mostrar solo cuando esté dentro del dashboard */
-      body:has([data-dashboard="true"]) .n8n-chat-widget {
+      /* Mostrar SOLO cuando esté dentro del dashboard (detectando el sidebar) */
+      body:has(aside.fixed) .n8n-chat-widget {
         display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
       }
     `;
     document.head.appendChild(customStyle);
@@ -64,9 +70,6 @@ export default function DigitalAssistant() {
     `;
     document.body.appendChild(script);
 
-    // Marcar el body como dashboard
-    document.body.setAttribute("data-dashboard", "true");
-
     return () => {
       // Limpieza al desmontar
       const existingLink = document.getElementById("n8n-chat-style");
@@ -76,9 +79,6 @@ export default function DigitalAssistant() {
       if (existingLink) document.head.removeChild(existingLink);
       if (existingScript) document.body.removeChild(existingScript);
       if (existingCustomStyle) document.head.removeChild(existingCustomStyle);
-
-      // Remover el atributo del body
-      document.body.removeAttribute("data-dashboard");
 
       // Intentar limpiar el widget del DOM
       const widgets = document.querySelectorAll(".n8n-chat-widget");
