@@ -498,7 +498,7 @@ model Subscription {
   
   // Billing
   stripeCustomerId    String?
-  stripeSubscriptionId String?
+  stripeSubscriptionId String?            @unique
   stripePriceId       String?
   
   // Metadata

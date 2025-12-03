@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       customer_email: user.email,
       metadata: {
         tenantId: user.tenantId,
-        userId: user.id,
+        userId: user.userId,
         plan: plan,
       },
     });
