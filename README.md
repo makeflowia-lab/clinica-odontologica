@@ -2,6 +2,21 @@
 
 Sistema completo de gestión para clínicas dentales construido con **Next.js**, **Neo4j** (base de datos gráfica) y **OpenAI** (agente de voz IA).
 
+---
+
+## 🔒 **ADVERTENCIA IMPORTANTE - LEER PRIMERO**
+
+**ANTES DE HACER CUALQUIER CAMBIO EN ESTE PROYECTO:**
+
+1. 📖 **LEE EL ARCHIVO:** `CANDADO_PROTECCION_SISTEMA.md`
+2. ✅ **VERIFICA LA SALUD DEL SISTEMA:** `npm run check-health`
+3. ⚠️ **NO EJECUTES** comandos con `--force-reset` o `--accept-data-loss` sin consultar
+4. 💾 **CREA BACKUP** antes de modificar archivos críticos
+
+**El sistema está 100% funcional. Cualquier cambio puede romperlo.**
+
+---
+
 ## ✨ Características Principales
 
 ### Gestión Clínica

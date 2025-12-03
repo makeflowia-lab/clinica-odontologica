@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "check-health": "tsx scripts/check-system-health.ts",
+    "restore-test-user": "tsx scripts/restore-test-user.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
