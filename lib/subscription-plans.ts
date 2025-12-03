@@ -12,6 +12,7 @@ export interface PlanConfig {
   features: string[];
   supportLevel: string;
   supportResponseTime: string;
+  stripePriceId?: string;
 }
 
 export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
@@ -32,6 +33,7 @@ export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
     ],
     supportLevel: "Email",
     supportResponseTime: "48 horas",
+    stripePriceId: "price_1SaF8MLNLkDxo0zzYwWyu0TK",
   },
   [SubscriptionPlan.PROFESSIONAL]: {
     name: "PROFESSIONAL",
@@ -52,6 +54,7 @@ export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
     ],
     supportLevel: "Prioritario",
     supportResponseTime: "24 horas",
+    stripePriceId: "price_1SaFCNLNLkDxo0zz8E7PwKWG",
   },
   [SubscriptionPlan.ANNUAL]: {
     name: "ANNUAL",
@@ -71,6 +74,7 @@ export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
     ],
     supportLevel: "Prioritario Plus",
     supportResponseTime: "12 horas",
+    stripePriceId: "price_1SaFEuLNLkDxo0zzBTF9XFgk",
   },
   [SubscriptionPlan.ENTERPRISE]: {
     name: "ENTERPRISE",
@@ -92,6 +96,7 @@ export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
     ],
     supportLevel: "VIP",
     supportResponseTime: "4 horas",
+    stripePriceId: "price_1SaFRTLNLkDxo0zzKLFTFlQG",
   },
 };
 

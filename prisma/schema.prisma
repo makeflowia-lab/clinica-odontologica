@@ -499,6 +499,7 @@ model Subscription {
   // Billing
   stripeCustomerId    String?
   stripeSubscriptionId String?
+  stripePriceId       String?
   
   // Metadata
   createdAt           DateTime           @default(now())

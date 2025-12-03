@@ -122,27 +122,23 @@ export default function SubscriptionPage() {
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     setLoading(true);
     try {
-      const res = await fetch("/api/subscription/upgrade", {
+      const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planId }),
       });
 
-      if (res.ok) {
-        showAlert(
-          "Éxito",
-          "Plan actualizado correctamente. La página se recargará.",
-          "info"
-        );
-        setTimeout(() => window.location.reload(), 2000);
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        window.location.href = data.url;
       } else {
-        const err = await res.json();
-        showAlert("Error", err.error || "Error al actualizar plan", "danger");
+        showAlert("Error", data.error || "Error al iniciar el pago", "danger");
+        setLoading(false);
       }
     } catch (error) {
       console.error(error);
       showAlert("Error", "Error de conexión", "danger");
-    } finally {
       setLoading(false);
     }
   };
