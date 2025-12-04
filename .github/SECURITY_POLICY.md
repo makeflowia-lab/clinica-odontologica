@@ -6,6 +6,7 @@ Los siguientes archivos están bajo protección especial.
 Modificarlos activará advertencias de seguridad:
 
 ### Críticos (Núcleo del SaaS)
+
 - `lib/subscription.ts`
 - `lib/subscription-plans.ts`
 - `lib/stripe.ts`
@@ -15,6 +16,7 @@ Modificarlos activará advertencias de seguridad:
 - `app/api/subscription/route.ts`
 
 ### Configuración
+
 - `.env`
 - `vercel.json`
 - `next.config.js`
@@ -22,17 +24,20 @@ Modificarlos activará advertencias de seguridad:
 ## Sistema de Advertencias
 
 Nivel 1 (⚠️ WARNING):
+
 - Modificación de archivos de UI
 - Cambios en estilos
 - Nuevas funcionalidades sin tocar DB
 
 Nivel 2 (🚨 CRITICAL):
+
 - Modificación de schema de base de datos
 - Cambios en sistema de suscripciones
 - Alteración de lógica de autenticación
 - Modificación de webhooks de Stripe
 
 Nivel 3 (❌ BLOQUEADO):
+
 - Comandos con --force-reset
 - Eliminación de tablas
 - Reset de migraciones sin backup

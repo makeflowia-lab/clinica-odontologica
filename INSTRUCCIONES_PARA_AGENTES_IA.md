@@ -13,6 +13,7 @@ Si estás leyendo esto, significa que estás trabajando en el proyecto **Clínic
 1. **LEE PRIMERO:** `CANDADO_PROTECCION_SISTEMA.md`
 
 2. **VERIFICA EL ESTADO:** Ejecuta mentalmente este checklist:
+
    ```
    ¿El sistema está funcionando? → SÍ
    ¿Voy a modificar archivos críticos? → Verificar lista
@@ -20,6 +21,7 @@ Si estás leyendo esto, significa que estás trabajando en el proyecto **Clínic
    ```
 
 3. **ARCHIVOS PROHIBIDOS DE MODIFICAR SIN ADVERTENCIA:**
+
    - `lib/subscription.ts` → Control de límites del SaaS
    - `lib/subscription-plans.ts` → Configuración de planes
    - `lib/stripe.ts` → Cliente de pagos

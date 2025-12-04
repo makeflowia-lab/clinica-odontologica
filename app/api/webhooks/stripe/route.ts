@@ -2,7 +2,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db/prisma";
-import { SubscriptionStatus } from "@prisma/client";
+import { SubscriptionStatus, SubscriptionPlan } from "@prisma/client";
+import { PLAN_CONFIGS } from "@/lib/subscription-plans";
 import Stripe from "stripe";
 
 export async function POST(req: Request) {
@@ -24,25 +25,60 @@ export async function POST(req: Request) {
   const session = event.data.object as Stripe.Checkout.Session;
 
   if (event.type === "checkout.session.completed") {
-    const subscription = await stripe.subscriptions.retrieve(
-      session.subscription as string
-    );
+    const session = event.data.object as Stripe.Checkout.Session;
+    const tenantId = session?.metadata?.tenantId;
+    const plan = session?.metadata?.plan as SubscriptionPlan;
 
-    if (!session?.metadata?.tenantId) {
-      return new NextResponse("Tenant ID is required", { status: 400 });
+    if (!tenantId || !plan) {
+      return new NextResponse("Tenant ID and Plan are required", {
+        status: 400,
+      });
+    }
+
+    const planConfig = PLAN_CONFIGS[plan];
+    if (!planConfig) {
+      return new NextResponse("Invalid plan configuration", { status: 400 });
+    }
+
+    let subscriptionId = session.subscription as string;
+    let customerId = session.customer as string;
+    let priceId = undefined;
+    let currentPeriodStart = new Date();
+    let currentPeriodEnd = new Date();
+
+    // Handle Subscription Mode
+    if (session.mode === "subscription" && subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      priceId = subscription.items.data[0].price.id;
+      currentPeriodStart = new Date(subscription.current_period_start * 1000);
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    }
+    // Handle Lifetime/Payment Mode
+    else if (session.mode === "payment") {
+      // For lifetime, we set a long period (e.g., 100 years)
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 100);
+      priceId = planConfig.stripePriceId;
     }
 
     await prisma.subscription.update({
       where: {
-        tenantId: session.metadata.tenantId,
+        tenantId: tenantId,
       },
       data: {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: subscription.customer as string,
-        stripePriceId: subscription.items.data[0].price.id,
+        planType: plan,
         status: SubscriptionStatus.ACTIVE,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        stripeSubscriptionId: subscriptionId, // Might be null for lifetime
+        stripeCustomerId: customerId,
+        stripePriceId: priceId,
+
+        // Update Limits based on new plan
+        maxPatients: planConfig.maxPatients,
+        maxUsers: planConfig.maxUsers,
+        aiQueriesLimit: planConfig.aiQueriesLimit,
+
+        // Update Periods
+        currentPeriodStart,
+        currentPeriodEnd,
       },
     });
   }

@@ -27,14 +27,20 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Guardar token y datos del usuario
         localStorage.setItem("token", data.token);
-        router.push("/dashboard");
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+        // Redirigir al dashboard
+        window.location.href = "/dashboard";
       } else {
         setError(data.error || "Error al iniciar sesión");
+        setLoading(false);
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("Error de conexión. Por favor, intente nuevamente.");
-    } finally {
       setLoading(false);
     }
   };
@@ -43,16 +49,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Iniciar Sesión</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Iniciar Sesión
+          </h1>
           <p className="text-gray-600">Clínica Odontológica SaaS</p>
         </div>
-        
+
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -67,7 +75,7 @@ export default function LoginPage() {
               placeholder="usuario@clinica.com"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Contraseña
@@ -81,7 +89,7 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
-          
+
           <button
             type="submit"
             disabled={loading}
@@ -90,9 +98,11 @@ export default function LoginPage() {
             {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
         </form>
-        
+
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-700 font-medium mb-2">Cuenta de prueba:</p>
+          <p className="text-sm text-gray-700 font-medium mb-2">
+            Cuenta de prueba:
+          </p>
           <p className="text-xs text-gray-600">📧 Email: prueba@clinica.com</p>
           <p className="text-xs text-gray-600">🔑 Password: Prueba123!</p>
         </div>

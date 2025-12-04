@@ -10,6 +10,7 @@
 **ANTES DE HACER CUALQUIER CAMBIO, LEE ESTO:**
 
 Este sistema SaaS está **100% FUNCIONAL** con:
+
 - ✅ Multi-tenancy operativo
 - ✅ Sistema de suscripciones activo
 - ✅ Stripe integrado y funcionando
@@ -37,11 +38,13 @@ Este sistema SaaS está **100% FUNCIONAL** con:
 ## ✅ CONFIGURACIÓN ACTUAL QUE FUNCIONA
 
 ### Base de Datos (Neon.tech)
+
 ```
 DATABASE_URL=postgresql://neondb_owner:npg_08AcwhFsRMyo@ep-steep-cake-a4ycrppg-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
 
 ### Tablas Críticas Existentes:
+
 - ✅ tenants (Multi-tenancy)
 - ✅ subscriptions (Sistema SaaS)
 - ✅ users
@@ -60,12 +63,14 @@ DATABASE_URL=postgresql://neondb_owner:npg_08AcwhFsRMyo@ep-steep-cake-a4ycrppg-p
 - ✅ audit_logs
 
 ### Usuario de Prueba Activo:
+
 - Email: prueba@clinica.com
 - Password: Prueba123!
 - Tenant: Clínica de Prueba
 - Plan: STARTER (Trial hasta 17/12/2025)
 
 ### Archivos Críticos del SaaS:
+
 ```
 lib/subscription.ts          ← Control de límites
 lib/subscription-plans.ts    ← Configuración de planes
@@ -83,11 +88,13 @@ prisma/schema.prisma         ← Esquema completo
 ### ANTES DE CUALQUIER CAMBIO:
 
 1. **PREGUNTA OBLIGATORIA:**
+
    - "¿Este cambio afectará las tablas de la base de datos?"
    - "¿Este cambio modificará el sistema de suscripciones?"
    - "¿Este cambio alterará la lógica de multi-tenancy?"
 
 2. **CREAR BACKUP:**
+
    ```powershell
    # Crear backup de archivos críticos
    Copy-Item "lib\subscription*.ts" "lib\BACKUP_$(Get-Date -Format 'yyyyMMdd_HHmmss')\"
@@ -95,21 +102,23 @@ prisma/schema.prisma         ← Esquema completo
    ```
 
 3. **DOCUMENTAR EL CAMBIO:**
+
    - Qué se va a cambiar
    - Por qué se va a cambiar
    - Qué puede romperse
    - Cómo revertir el cambio
 
 4. **ADVERTIR AL USUARIO:**
+
    ```
    ⚠️ ADVERTENCIA CRÍTICA:
    Este cambio puede afectar [X funcionalidad].
-   
+
    ❌ NO CONTINÚES si necesitas que el sistema siga funcionando.
-   
+
    Riesgos:
    - [Listar riesgos específicos]
-   
+
    ¿Deseas continuar? (Escribe "SÍ, ACEPTO LOS RIESGOS" para confirmar)
    ```
 
@@ -158,17 +167,20 @@ Antes de hacer cualquier cambio, verificar:
 Si algo se rompe:
 
 1. **Detener el servidor:**
+
    ```powershell
    Get-Process | Where-Object {$_.ProcessName -eq "node"} | Stop-Process -Force
    ```
 
 2. **Restaurar base de datos:**
+
    ```powershell
    npx prisma db push --force-reset --accept-data-loss
    npx tsx scripts/restore-test-user.ts
    ```
 
 3. **Restaurar archivos desde Git:**
+
    ```powershell
    git checkout -- .
    npm install
@@ -193,6 +205,7 @@ Si algo se rompe:
 ## 🔐 HASH DE VERIFICACIÓN
 
 **Schema Prisma (última versión funcional):**
+
 ```
 Fecha: 2025-12-03
 Commit: [último commit funcional]
@@ -206,6 +219,7 @@ Tablas: 17 (incluyendo tenants y subscriptions)
 **"SI FUNCIONA, NO LO TOQUES SIN ANTES ADVERTIR"**
 
 Cualquier agente de IA que modifique este sistema **DEBE**:
+
 1. Leer este archivo primero
 2. Verificar que el cambio no está en la lista prohibida
 3. Advertir al usuario con los riesgos específicos

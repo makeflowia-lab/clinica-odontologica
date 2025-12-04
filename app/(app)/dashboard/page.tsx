@@ -116,7 +116,7 @@ export default function DashboardPage() {
               patient: apt.patient,
               type: apt.type,
               dentist: "", // API might not return dentist name yet
-              status: apt.status.toLowerCase(),
+              status: apt.status ? apt.status.toLowerCase() : 'scheduled',
             })
           );
           setAppointments(mappedAppointments);

@@ -20,6 +20,7 @@ Sistema completo de gestión para clínicas dentales construido con **Next.js**,
 ## ✨ Características Principales
 
 ### Gestión Clínica
+
 - 📅 **Agenda Multiusuario**: Citas para múltiples dentistas/salas con detección de conflictos
 - 👥 **Gestión de Pacientes**: Historiales completos, datos demográficos, alergias, condiciones médicas
 - 🦷 **Odontograma Digital**: Visualización interactiva del estado dental
@@ -27,6 +28,7 @@ Sistema completo de gestión para clínicas dentales construido con **Next.js**,
 - 💊 **Tratamientos**: Seguimiento completo de procedimientos, costos y resultados
 
 ### Gestión Administrativa
+
 - 💰 **Facturación Integrada**: Generación de facturas, control de pagos, integración con Stripe
 - 📦 **Inventario**: Control de materiales, insumos, alertas de stock bajo
 - 📊 **Reportes y Analytics**: Dashboard con KPIs financieros y operacionales
@@ -34,6 +36,7 @@ Sistema completo de gestión para clínicas dentales construido con **Next.js**,
 - 👨‍⚕️ **Roles y Permisos**: Admin, Dentista, Recepcionista con acceso diferenciado
 
 ### Tecnología Avanzada
+
 - 🗄️ **Neo4j (Base de Datos Gráfica)**: Consultas complejas sobre relaciones (pacientes ↔ tratamientos ↔ materiales)
 - 🎙️ **Agente de Voz IA**: Comandos de voz para crear pacientes, agendar citas, buscar información
 - 🔐 **Seguridad**: JWT authentication, bcrypt, cumplimiento HIPAA/GDPR
@@ -51,7 +54,7 @@ Sistema completo de gestión para clínicas dentales construido con **Next.js**,
 
 ## 📋 Requisitos Previos
 
-- Node.js 18+ 
+- Node.js 18+
 - Neo4j 5.x (Desktop o servidor)
 - Cuenta Stripe (modo test para desarrollo)
 - Cuenta Twilio (opcional, para SMS)
@@ -60,6 +63,7 @@ Sistema completo de gestión para clínicas dentales construido con **Next.js**,
 ## 🚀 Instalación y Configuración
 
 ### 1. Clonar el repositorio
+
 ```powershell
 cd D:\
 git clone <repo-url> clinica-odon
@@ -67,6 +71,7 @@ cd clinica-odon
 ```
 
 ### 2. Instalar dependencias
+
 ```powershell
 npm install
 ```
@@ -74,12 +79,14 @@ npm install
 ### 3. Configurar Neo4j
 
 **Opción A: Neo4j Desktop (recomendado para desarrollo)**
+
 1. Descargar [Neo4j Desktop](https://neo4j.com/download/)
 2. Crear un nuevo proyecto y base de datos
 3. Iniciar la base de datos (por defecto: `neo4j://localhost:7687`)
 4. Configurar usuario/contraseña (por defecto: `neo4j/neo4j`, cambiar en primer acceso)
 
 **Opción B: Neo4j AuraDB (Cloud)**
+
 1. Crear cuenta en [Neo4j Aura](https://neo4j.com/cloud/aura/)
 2. Crear instancia gratuita
 3. Guardar URI de conexión y credenciales
@@ -157,18 +164,22 @@ Abre [http://localhost:3000](http://localhost:3000)
 ### Crear Paciente
 
 **Opción 1: Interfaz Web**
+
 - Dashboard → Pacientes → Nuevo Paciente
 
 **Opción 2: Agente de Voz**
+
 - Click en ícono de micrófono
-- Di: *"Crear paciente Juan Pérez, teléfono 555-1234, correo juan@example.com"*
+- Di: _"Crear paciente Juan Pérez, teléfono 555-1234, correo juan@example.com"_
 
 ### Agendar Cita
 
 **Por Voz:**
-- *"Agendar cita para María García mañana a las 10 AM, limpieza dental"*
+
+- _"Agendar cita para María García mañana a las 10 AM, limpieza dental"_
 
 **Por Interfaz:**
+
 - Agenda → Nueva Cita → Seleccionar paciente, dentista, fecha y tipo
 
 ### Consultas Avanzadas Neo4j

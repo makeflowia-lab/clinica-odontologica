@@ -21,6 +21,7 @@
 ## Impacto del Cambio
 
 **¿Qué modifica este PR?**
+
 - [ ] Solo UI/UX (seguro)
 - [ ] Solo estilos (seguro)
 - [ ] Nuevas funcionalidades sin tocar DB (revisar)
