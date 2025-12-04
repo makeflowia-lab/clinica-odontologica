@@ -16,6 +16,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log("Intentando login con:", email);
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -24,20 +26,29 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      console.log("Response status:", response.status);
 
-      if (response.ok) {
-        // Guardar token y datos del usuario
-        localStorage.setItem("token", data.token);
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-        }
-        // Redirigir al dashboard
-        window.location.href = "/dashboard";
-      } else {
-        setError(data.error || "Error al iniciar sesión");
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Login failed:", errorData);
+        setError(errorData.error || "Error al iniciar sesión");
         setLoading(false);
+        return;
       }
+
+      const data = await response.json();
+      console.log("Login successful:", data);
+
+      // Guardar token y datos del usuario
+      localStorage.setItem("token", data.token);
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+      
+      // Redirigir al dashboard
+      console.log("Redirigiendo a dashboard...");
+      window.location.href = "/dashboard";
+      
     } catch (err) {
       console.error("Login error:", err);
       setError("Error de conexión. Por favor, intente nuevamente.");
