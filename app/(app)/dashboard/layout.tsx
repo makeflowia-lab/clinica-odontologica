@@ -41,17 +41,26 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         if (userStr) {
           const user = JSON.parse(userStr);
           const response = await fetch(
-            `/api/settings/api-key?userId=${user.id}`
+            `/api/settings/api-key?userId=${user.id}`,
+            { 
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem("token")}`
+              }
+            }
           );
-          const data = await response.json();
-          if (data.hasKey) {
-            setApiKeyConfigured(true);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.hasKey) {
+              setApiKeyConfigured(true);
+            }
           }
         }
       } catch (error) {
         console.error("Error checking API key:", error);
+        // No bloquear si falla, continuar normal
       }
     };
+    // Ejecutar en background sin bloquear
     checkApiKey();
   }, []);
 

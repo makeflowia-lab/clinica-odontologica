@@ -142,7 +142,7 @@ const AppointmentsPage = () => {
           const dateObj = new Date(apt.dateTime);
           return {
             ...apt,
-            status: apt.status ? apt.status.toLowerCase() : 'scheduled', // Convert to lowercase for frontend
+            status: apt.status ? apt.status.toLowerCase() : "scheduled", // Convert to lowercase for frontend
             date: dateObj.toLocaleDateString("en-CA"), // YYYY-MM-DD in local time
             time: dateObj.toLocaleTimeString([], {
               hour: "2-digit",
