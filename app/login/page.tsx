@@ -110,12 +110,14 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-700 font-medium mb-2">
-            Cuenta de prueba:
+        {/* Enlace para registro de nuevos clientes */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            ¿No tienes una cuenta?{' '}
+            <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+              Regístrate aquí
+            </a>
           </p>
-          <p className="text-xs text-gray-600">📧 Email: prueba@clinica.com</p>
-          <p className="text-xs text-gray-600">🔑 Password: Prueba123!</p>
         </div>
       </div>
     </div>
