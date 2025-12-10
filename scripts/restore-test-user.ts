@@ -38,7 +38,7 @@ async function main() {
   const tenant = await prisma.tenant.create({
     data: {
       name: "Clínica de Prueba",
-      slug: "clinica-prueba",
+      slug: `clinica-prueba-${Math.random().toString(36).slice(2, 6)}`,
       isActive: true,
     },
   });

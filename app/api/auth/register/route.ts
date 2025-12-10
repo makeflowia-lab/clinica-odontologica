@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
+import { PLAN_CONFIGS } from "@/lib/subscription-plans";
+import { SubscriptionPlan, SubscriptionStatus } from "@prisma/client";
 import { z } from "zod";
-import { getSubscription, checkSubscriptionLimit } from "@/lib/subscription";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -13,6 +14,39 @@ const registerSchema = z.object({
   phone: z.string().optional(),
   recoverySecret: z.string().min(6).optional(), // Palabra secreta para recuperación
 });
+
+const DEFAULT_TIMEZONE = "America/Mexico_City";
+const DEFAULT_CURRENCY = "MXN";
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+}
+
+async function createUniqueTenantSlug(base: string) {
+  const seed = slugify(base || "clinica");
+  let candidate = seed;
+  let tries = 0;
+
+  while (true) {
+    if (tries > 0) {
+      candidate = `${seed}-${Math.random().toString(36).slice(2, 6)}`;
+    }
+
+    const existing = await prisma.tenant.findUnique({
+      where: { slug: candidate },
+    });
+
+    if (!existing) break;
+    tries += 1;
+  }
+
+  return candidate;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,11 +87,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar si existe un administrador temporal
-    const tempAdmin = await prisma.user.findFirst({
-      where: { isTemporaryAdmin: true },
-    });
-
     // Hash password
     const hashedPassword = await hashPassword(data.password);
 
@@ -66,111 +95,75 @@ export async function POST(request: NextRequest) {
       ? await hashPassword(data.recoverySecret)
       : null;
 
-    let user;
-    let replacedTempAdmin = false;
+    const tenantName =
+      `${data.firstName} ${data.lastName}`.trim() || data.email.split("@")[0];
 
-    if (tempAdmin) {
-      // Reemplazar al administrador temporal con el nuevo usuario
-      // Guardar el tenantId del admin temporal antes de borrarlo
-      const tenantId = tempAdmin.tenantId;
+    const tenantSlug = await createUniqueTenantSlug(tenantName);
 
-      // Ensure subscription exists for this tenant
-      await getSubscription(tenantId);
-
-      // Primero eliminar el admin temporal
-      await prisma.user.delete({
-        where: { id: tempAdmin.id },
-      });
-
-      // Crear el nuevo usuario como ADMIN (primer usuario real)
-      user = await prisma.user.create({
-        data: {
-          email: data.email.toLowerCase().trim(),
-          password: hashedPassword,
-          firstName: data.firstName.trim(),
-          lastName: data.lastName.trim(),
-          role: "ADMIN", // El primer usuario siempre es ADMIN
-          phone: data.phone?.trim() || null,
-          isTemporaryAdmin: false,
-          recoverySecret: hashedRecoverySecret,
-          tenantId: tenantId, // Asignar al mismo tenant
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: tenantName,
+        slug: tenantSlug,
+        isActive: true,
+        settings: {
+          timezone: DEFAULT_TIMEZONE,
+          currency: DEFAULT_CURRENCY,
         },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          phone: true,
-          createdAt: true,
-          tenantId: true,
-        },
-      });
+      },
+    });
 
-      replacedTempAdmin = true;
-    } else {
-      // Para usuarios subsecuentes, necesitan un tenantId
-      // Por ahora, si no se envía, intentamos usar el primer tenant disponible (para compatibilidad)
-      // En un sistema SaaS real, esto vendría del subdominio o invitación
-      let tenantId = (body as any).tenantId;
+    const planConfig = PLAN_CONFIGS[SubscriptionPlan.STARTER];
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
-      if (!tenantId) {
-        const defaultTenant = await prisma.tenant.findFirst();
-        if (defaultTenant) {
-          tenantId = defaultTenant.id;
-        } else {
-          return NextResponse.json(
-            {
-              error:
-                "No se encontró un tenant válido y no se proporcionó tenantId",
-            },
-            { status: 400 }
-          );
-        }
-      }
+    const currentPeriodEnd = new Date();
+    currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
 
-      // Check subscription limits for users
-      const limitCheck = await checkSubscriptionLimit(tenantId, "users");
-      if (!limitCheck.allowed) {
-        return NextResponse.json(
-          { error: limitCheck.message, code: "LIMIT_REACHED" },
-          { status: 403 }
-        );
-      }
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planType: SubscriptionPlan.STARTER,
+        status: SubscriptionStatus.TRIAL,
+        maxPatients: planConfig.maxPatients,
+        maxUsers: planConfig.maxUsers,
+        aiQueriesLimit: planConfig.aiQueriesLimit,
+        aiQueriesUsed: 0,
+        trialEndsAt,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd,
+      },
+    });
 
-      // Crear usuario normal
-      user = await prisma.user.create({
-        data: {
-          email: data.email.toLowerCase().trim(),
-          password: hashedPassword,
-          firstName: data.firstName.trim(),
-          lastName: data.lastName.trim(),
-          role: data.role,
-          phone: data.phone?.trim() || null,
-          isTemporaryAdmin: false,
-          recoverySecret: hashedRecoverySecret,
-          tenantId: tenantId,
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          phone: true,
-          createdAt: true,
-          tenantId: true,
-        },
-      });
-    }
+    const user = await prisma.user.create({
+      data: {
+        email: data.email.toLowerCase().trim(),
+        password: hashedPassword,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        role: "ADMIN",
+        phone: data.phone?.trim() || null,
+        isTemporaryAdmin: false,
+        recoverySecret: hashedRecoverySecret,
+        tenantId: tenant.id,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        phone: true,
+        createdAt: true,
+        tenantId: true,
+      },
+    });
 
     return NextResponse.json(
       {
-        message: replacedTempAdmin
-          ? "Usuario registrado exitosamente como Administrador Principal"
-          : "Usuario registrado exitosamente",
+        message: "Usuario registrado exitosamente",
         user,
-        isFirstUser: replacedTempAdmin,
+        tenantId: tenant.id,
+        isFirstUser: true,
       },
       { status: 201 }
     );
