@@ -186,6 +186,7 @@ export default function BillingPage() {
   });
 
   const [patients, setPatients] = useState<any[]>([]);
+  const [currentDentistName, setCurrentDentistName] = useState("");
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -254,6 +255,21 @@ export default function BillingPage() {
       }
     };
     loadPatients();
+
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          const name = `${parsed?.firstName ?? ""} ${parsed?.lastName ?? ""}`.trim();
+          if (name) {
+            setCurrentDentistName(name);
+          }
+        } catch (error) {
+          console.error("Error parsing user from localStorage:", error);
+        }
+      }
+    }
   }, []);
 
   const loadInvoices = async () => {
@@ -539,14 +555,24 @@ export default function BillingPage() {
     }
   };
 
+  const getInvoiceLabel = (invoice: Invoice) =>
+    invoice.invoiceNumber || invoice.id;
+
+  const dentistDisplayName = currentDentistName
+    ? `${currentDentistName} (Dentista)`
+    : "Dentista";
+
   const generateTicket = (invoice: Invoice, paymentMethod: string) => {
     const now = new Date();
+    const invoiceLabel = getInvoiceLabel(invoice);
+    const invoiceLabel = getInvoiceLabel(invoice);
     const ticketContent = `
 ╔════════════════════════════════════════════════════════════╗
 ║          CLÍNICA DENTAL - COMPROBANTE DE PAGO             ║
 ╚════════════════════════════════════════════════════════════╝
 
-FACTURA: ${invoice.id}
+FACTURA: ${invoiceLabel}
+DENTISTA: ${dentistDisplayName}
 FECHA DE EMISIÓN: ${new Date(invoice.date).toLocaleDateString("es-ES", {
       weekday: "long",
       year: "numeric",
@@ -618,7 +644,7 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Comprobante_Pago_${invoice.id}_${now.getTime()}.txt`;
+    a.download = `Comprobante_Pago_${invoiceLabel}_${now.getTime()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -629,8 +655,9 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
     showAlert(
       "Pago Registrado",
       `✅ PAGO REGISTRADO EXITOSAMENTE\n\n` +
-        `Factura: ${invoice.id}\n` +
+        `Factura: ${invoiceLabel}\n` +
         `Paciente: ${invoice.patientName}\n` +
+        `Dentista: ${dentistDisplayName}\n` +
         `Total Pagado: $${invoice.total.toLocaleString()}\n` +
         `Método: ${paymentMethod}\n\n` +
         `📄 El comprobante se ha descargado automáticamente.`,
@@ -639,9 +666,10 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
   };
 
   const handleMarkAsPaid = async (invoice: Invoice) => {
+    const invoiceLabel = getInvoiceLabel(invoice);
     showConfirm(
       "Marcar como Pagada",
-      `¿Marcar factura ${invoice.id} como pagada?`,
+      `¿Marcar factura ${invoiceLabel} como pagada?`,
       async () => {
         try {
           // Actualizar factura como pagada via API
@@ -692,6 +720,8 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       const { default: jsPDF } = await import("jspdf");
 
       const doc = new jsPDF();
+      const invoiceLabel = getInvoiceLabel(invoice);
+      const dentistLabel = dentistDisplayName;
 
       // Configuración
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -712,7 +742,7 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       doc.setFont("helvetica", "normal");
 
       // Información de factura
-      doc.text(`Factura N°: ${invoice.id}`, margin, y);
+      doc.text(`Factura N°: ${invoiceLabel}`, margin, y);
       y += 7;
       doc.text(
         `Fecha: ${new Date(invoice.date).toLocaleDateString()}`,
@@ -727,6 +757,8 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       );
       y += 7;
       doc.text(`Paciente: ${invoice.patientName}`, margin, y);
+      y += 7;
+      doc.text(`Dentista: ${dentistLabel}`, margin, y);
       y += 7;
       doc.text(`Estado: ${invoice.status}`, margin, y);
 
@@ -818,11 +850,11 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       });
 
       // Guardar PDF
-      doc.save(`factura-${invoice.id}.pdf`);
+      doc.save(`factura-${invoiceLabel}.pdf`);
 
       showAlert(
         "Descarga Exitosa",
-        `✅ Factura ${invoice.id} descargada\n\n✓ Formato: PDF\n✓ Lista para imprimir o enviar`,
+        `✅ Factura ${invoiceLabel} descargada\n\n✓ Formato: PDF\n✓ Lista para imprimir o enviar`,
         "info"
       );
     } catch (error) {
@@ -1001,127 +1033,129 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {invoice.invoiceNumber ||
-                          invoice.id.substring(0, 8) + "..."}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {invoice.patientName}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {new Date(invoice.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {new Date(invoice.dueDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">
-                        ${invoice.total.toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          invoice.status === "Pagada"
-                            ? "bg-green-100 text-green-800"
-                            : invoice.status === "Pendiente"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          title="Descargar PDF"
-                          onClick={() => handleDownloadPDF(invoice)}
-                          className="text-blue-600 hover:text-blue-900"
+                {filteredInvoices.map((invoice) => {
+                  const invoiceLabel = getInvoiceLabel(invoice);
+                  return (
+                    <tr key={invoice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {invoiceLabel}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {invoice.patientName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(invoice.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(invoice.dueDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">
+                          ${invoice.total.toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            invoice.status === "Pagada"
+                              ? "bg-green-100 text-green-800"
+                              : invoice.status === "Pendiente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                         >
-                          <FileDown className="w-4 h-4" />
-                        </button>
-                        <button
-                          title="Eliminar factura"
-                          onClick={() => {
-                            setConfirmDialog({
-                              isOpen: true,
-                              title: "Eliminar Factura",
-                              message:
-                                "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.",
-                              variant: "danger",
-                              onConfirm: async () => {
-                                try {
-                                  const token = localStorage.getItem("token");
-                                  const response = await fetch(
-                                    `/api/invoices?id=${invoice.id}`,
-                                    {
-                                      method: "DELETE",
-                                      headers: {
-                                        Authorization: `Bearer ${token}`,
-                                      },
-                                    }
-                                  );
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            title="Descargar PDF"
+                            onClick={() => handleDownloadPDF(invoice)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <FileDown className="w-4 h-4" />
+                          </button>
+                          <button
+                            title="Eliminar factura"
+                            onClick={() => {
+                              setConfirmDialog({
+                                isOpen: true,
+                                title: "Eliminar Factura",
+                                message:
+                                  "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.",
+                                variant: "danger",
+                                onConfirm: async () => {
+                                  try {
+                                    const token = localStorage.getItem("token");
+                                    const response = await fetch(
+                                      `/api/invoices?id=${invoice.id}`,
+                                      {
+                                        method: "DELETE",
+                                        headers: {
+                                          Authorization: `Bearer ${token}`,
+                                        },
+                                      }
+                                    );
 
-                                  if (response.ok) {
-                                    loadInvoices();
-                                    setConfirmDialog((prev) => ({
-                                      ...prev,
-                                      isOpen: false,
-                                    }));
-                                  } else {
+                                    if (response.ok) {
+                                      loadInvoices();
+                                      setConfirmDialog((prev) => ({
+                                        ...prev,
+                                        isOpen: false,
+                                      }));
+                                    } else {
+                                      showAlert(
+                                        "Error",
+                                        "Error al eliminar la factura",
+                                        "danger"
+                                      );
+                                    }
+                                  } catch (error) {
+                                    console.error(
+                                      "Error deleting invoice:",
+                                      error
+                                    );
                                     showAlert(
                                       "Error",
                                       "Error al eliminar la factura",
                                       "danger"
                                     );
                                   }
-                                } catch (error) {
-                                  console.error(
-                                    "Error deleting invoice:",
-                                    error
-                                  );
-                                  showAlert(
-                                    "Error",
-                                    "Error al eliminar la factura",
-                                    "danger"
-                                  );
-                                }
-                              },
-                            });
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        {invoice.status !== "Pagada" && (
-                          <>
-                            <button
-                              title="Pagar con tarjeta (Stripe)"
-                              onClick={() => handlePayInvoice(invoice)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              <CreditCard className="w-4 h-4" />
-                            </button>
-                            <button
-                              title="Marcar como pagada"
-                              onClick={() => handleMarkAsPaid(invoice)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                                },
+                              });
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {invoice.status !== "Pagada" && (
+                            <>
+                              <button
+                                title="Pagar con tarjeta (Stripe)"
+                                onClick={() => handlePayInvoice(invoice)}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </button>
+                              <button
+                                title="Marcar como pagada"
+                                onClick={() => handleMarkAsPaid(invoice)}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1411,7 +1445,9 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
             <div className="mb-6 bg-gray-50 p-4 rounded-lg">
               <div className="flex justify-between mb-2">
                 <span className="text-gray-600">Factura:</span>
-                <span className="font-medium">{selectedInvoice.id}</span>
+                <span className="font-medium">
+                  {getInvoiceLabel(selectedInvoice)}
+                </span>
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-600">Paciente:</span>
