@@ -555,8 +555,15 @@ export default function BillingPage() {
     }
   };
 
-  const getInvoiceLabel = (invoice: Invoice) =>
-    invoice.invoiceNumber || invoice.id;
+  const getInvoiceLabel = (invoice: Invoice) => {
+    // Siempre usar invoiceNumber si existe y no está vacío
+    if (invoice.invoiceNumber && typeof invoice.invoiceNumber === 'string' && invoice.invoiceNumber.trim() !== "") {
+      return invoice.invoiceNumber;
+    }
+    // Solo usar id como último recurso (no debería llegar aquí si invoiceNumber está correctamente asignado)
+    console.warn("Invoice sin invoiceNumber, usando ID:", invoice.id);
+    return invoice.id;
+  };
 
   const dentistDisplayName = currentDentistName
     ? `${currentDentistName} (Dentista)`
@@ -564,7 +571,6 @@ export default function BillingPage() {
 
   const generateTicket = (invoice: Invoice, paymentMethod: string) => {
     const now = new Date();
-    const invoiceLabel = getInvoiceLabel(invoice);
     const invoiceLabel = getInvoiceLabel(invoice);
     const ticketContent = `
 ╔════════════════════════════════════════════════════════════╗
@@ -720,7 +726,10 @@ Generado automáticamente el ${now.toLocaleString("es-ES")}
       const { default: jsPDF } = await import("jspdf");
 
       const doc = new jsPDF();
-      const invoiceLabel = getInvoiceLabel(invoice);
+      // Asegurarse de usar invoiceNumber si está disponible, nunca el UUID
+      const invoiceLabel = (invoice.invoiceNumber && typeof invoice.invoiceNumber === 'string' && invoice.invoiceNumber.trim() !== "") 
+        ? invoice.invoiceNumber 
+        : getInvoiceLabel(invoice);
       const dentistLabel = dentistDisplayName;
 
       // Configuración
